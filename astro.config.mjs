@@ -7,7 +7,8 @@ import tailwindcss from '@tailwindcss/vite';
 //   项目仓库（如 my-blog）              -> https://<用户名>.github.io/my-blog
 // 项目仓库时还需要同时设置 base: '/my-blog'。
 export default defineConfig({
-  site: 'https://example.com',
+  // 用户主页仓库（EVAE-AL.github.io）部署在域名根路径，不需要 base。
+  site: 'https://EVAE-AL.github.io',
   // base: '/my-blog',
 
   integrations: [sitemap()],

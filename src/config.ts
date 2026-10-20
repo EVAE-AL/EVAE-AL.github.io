@@ -48,8 +48,7 @@ export const nav = [
 
 /** 社交链接：不需要的直接删掉整项 */
 export const social: SocialLink[] = [
-  { name: 'GitHub', url: 'https://github.com/', icon: 'github' },
-  { name: 'Email', url: 'mailto:hello@example.com', icon: 'mail' },
+  { name: 'GitHub', url: 'https://github.com/EVAE-AL', icon: 'github' },
   { name: 'RSS', url: '/rss.xml', icon: 'rss' },
 ];
 

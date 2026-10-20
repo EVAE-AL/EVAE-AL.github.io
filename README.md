@@ -88,8 +88,7 @@ npm run preview
 │   ├── bg-video.mp4              # ⭐ 背景视频（7.05 MB，自托管）
 │   ├── bg-poster.jpg             # 背景视频兜底静帧（1920×1080 / 342 KB，从视频抽的 t=0 帧）
 │   ├── favicon.svg
-│   ├── og-default.jpg            # 社交分享卡片
-│   └── lab-recipes.html          # ⚠️ 开发期对比页，部署前删掉
+│   └── og-default.jpg            # 社交分享卡片
 └── .github/workflows/deploy.yml  # GitHub Pages 自动部署
 ```
 
@@ -383,31 +382,38 @@ export const footer = { copyright: 'EVIL DEMON', icp: '' };
 
 ## 部署到 GitHub Pages
 
-### 部署前必改（现在还没改）
+### 当前状态：已就绪，目标地址 https://EVAE-AL.github.io
 
-- [ ] `astro.config.mjs` 里的 `site` 仍是 `'https://example.com'`，改成你的实际地址
-- [ ] 删除 `public/lab-recipes.html`（开发期的对比页，不属于站点内容）
-- [ ] 确认 `src/config.ts` 里的站点名、作者名、社交链接都是你要的
-- [ ] 想减小首屏体积的话，先压缩 `public/bg-video.mp4`
+部署前必改项已全部处理完：
 
-### 步骤
+- [x] `astro.config.mjs` 的 `site` 已设为 `'https://EVAE-AL.github.io'`（用户主页仓库，部署在域名根路径，**不需要 `base`**）
+- [x] 已删除 `public/lab-recipes.html`（开发期对比页）
+- [x] `src/config.ts` 的站点名、作者名、GitHub 链接已核对；占位的 `mailto:hello@example.com` 已移除
+- [x] 已移除指向 `motionsites.org` 的 `preconnect`（视频已自托管，不再依赖第三方域名）
+- [x] `public/og-default.jpg` 已按最终站点信息重新生成
 
-1. 把项目推到 GitHub 仓库（`git init` 后首次推送）
-2. 在仓库 **Settings → Pages → Source** 选择 **GitHub Actions**
-3. 修改 [`astro.config.mjs`](astro.config.mjs) 中的 `site`：
+> 唯一保留的取舍：`public/bg-video.mp4` 仍是 7.05 MB 原文件（首屏偏重）。
+> 压到 720p 约 0.4 MB，但需要 ffmpeg，本机未安装。
+
+### 仓库与自动部署
+
+- 仓库：`EVAE-AL/EVAE-AL.github.io`（用户主页仓库，Pages 自动发布到域名根路径）
+- 分支：`main`（[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 只在 `main` 上触发）
+- Pages 源：仓库 **Settings → Pages → Source** 选 **GitHub Actions**
+
+推送到 `main` 后工作流自动执行 `npm ci` → `npm run build` → 发布 `dist`。
+
+### 如果换成项目仓库（如 `my-blog`）
+
+那就要同时加 `base`，否则所有绝对路径都会 404：
 
 ```js
-// 用户主页仓库（仓库名必须是 <用户名>.github.io）
-site: 'https://<用户名>.github.io',
-
-// 普通项目仓库（如仓库名 my-blog），还要加上 base
 site: 'https://<用户名>.github.io',
 base: '/my-blog',
 ```
 
-4. 推送到 `main` 分支，[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) 会自动构建并发布
-
 > 用 `base` 时不用手改任何链接：`src/lib/site.ts` 里的 `withBase()` 会处理前缀。
+> 换成用户主页仓库（`<用户名>.github.io`）时则**不要**设 `base`。
 
 **部署到 Cloudflare Pages / Vercel**：构建命令填 `npm run build`，输出目录填 `dist`。
 
