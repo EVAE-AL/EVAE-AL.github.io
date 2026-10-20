@@ -1,0 +1,128 @@
+---
+/**
+ * 全站加载动画遮罩。
+ *
+ * 显示条件：<html> 上有 js-loading 类（由 LoadingScript 在 <head> 内联加上）。
+ * 默认 display:none —— 所以禁 JS、或系统开了「减少动态效果」时，
+ * 这个遮罩根本不会出现，页面内容直接可见，不会被挡死。
+ */
+export interface Props {
+  /** 最短显示时长（ms），避免一闪而过 */
+  minDuration?: number;
+  /** 硬上限（ms）：加载卡住也会强制收尾 */
+  maxDuration?: number;
+  /** 画布逻辑尺寸（px） */
+  size?: number;
+}
+
+const { minDuration = 650, maxDuration = 2600, size = 210 } = Astro.props as Props;
+---
+
+<div
+  id="loading-screen"
+  class="loading-screen"
+  aria-hidden="true"
+  data-min-duration={minDuration}
+  data-max-duration={maxDuration}
+  data-size={size}
+>
+  <div class="loading-screen__dial">
+    <canvas class="loading-screen__canvas" data-loading-canvas></canvas>
+    <div class="loading-screen__readout">
+      <span class="loading-screen__value"><span data-loading-percent>0</span>%</span>
+      <span class="loading-screen__label">载入中</span>
+    </div>
+  </div>
+</div>
+
+<!-- 用 is:global：选择器需要以 html.js-loading 作祖先，
+     Astro 的作用域变换会给最后一个复合选择器追加属性，这里要避免歧义 -->
+<style is:global>
+  .loading-screen {
+    display: none;
+  }
+
+  html.js-loading .loading-screen {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    inset: 0;
+    /* 高于 header(z-50)、返回顶部(z-40)、跳转链接(z-100) */
+    z-index: 200;
+    background-color: var(--bg);
+    opacity: 1;
+    /* 时长需与 loading-screen.ts 的 fadeDuration 保持一致 */
+    transition: opacity 520ms ease;
+  }
+
+  html.js-loading .loading-screen.is-leaving {
+    opacity: 0;
+  }
+
+  /* 加载期间锁住滚动，避免遮罩淡出时页面已经滚到别处 */
+  html.js-loading {
+    overflow: hidden;
+  }
+
+  .loading-screen__dial {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .loading-screen__canvas {
+    display: block;
+  }
+
+  .loading-screen__readout {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.4rem;
+    pointer-events: none;
+    font-family: var(--font-sans);
+  }
+
+  .loading-screen__value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .loading-screen__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.22em;
+    text-indent: 0.22em;
+    color: var(--text-mute);
+  }
+
+  /* 系统开启「减少动态效果」时不显示遮罩 */
+  @media (prefers-reduced-motion: reduce) {
+    html.js-loading .loading-screen {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { initLoadingScreen } from '../scripts/loading-screen';
+
+  const root = document.getElementById('loading-screen');
+
+  // 只有 head 脚本确实放行了才启动动画；否则直接摘掉，不做无用功
+  if (root) {
+    if (document.documentElement.classList.contains('js-loading')) {
+      initLoadingScreen(root, {
+        minDuration: Number(root.dataset.minDuration) || 650,
+        maxDuration: Number(root.dataset.maxDuration) || 2600,
+        size: Number(root.dataset.size) || 210,
+      });
+    } else {
+      root.remove();
+    }
+  }
+</script>

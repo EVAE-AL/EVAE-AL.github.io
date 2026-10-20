@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import { getSortedPosts, groupByYear } from '../lib/posts';
+import { categoryOf } from '../lib/categories';
+import { formatDate, isoDate, withBase } from '../lib/site';
+
+const posts = await getSortedPosts();
+const years = groupByYear(posts);
+const totalTags = new Set(posts.flatMap((p) => p.data.tags ?? [])).size;
+---
+
+<BaseLayout title="归档" description="按年份浏览全部文章">
+  <section class="pb-24 pt-12 sm:pt-16">
+    <div class="container-page">
+      <!-- 页头 -->
+      <header class="mb-14 max-w-2xl">
+        <span class="chip chip-brand mb-4 !px-3 !py-1.5 !text-[0.8rem]">
+          <Icon name="archive" size={14} />
+          时间线
+        </span>
+        <!-- 页头文字直接压在视频上，必须各自带一层紧贴的纸色底（.paper-plate）。
+             渐层文字（text-gradient）不能和底放在同一个元素上：
+             background-clip:text 会把该元素的所有背景一起裁进字形。 -->
+        <h1 class="paper-plate text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+          文章<span class="text-gradient">归档</span>
+        </h1>
+        <p class="paper-plate mt-4 text-base leading-relaxed text-ink-soft">
+          这里按时间倒序收录了全部 {posts.length} 篇文章，横跨 {years.length} 个年份、{totalTags} 个标签。
+        </p>
+      </header>
+
+      {
+        years.length === 0 && (
+          <p class="py-20 text-center text-ink-mute">还没有任何文章。</p>
+        )
+      }
+
+      <!-- 年份时间线 -->
+      <div class="space-y-14">
+        {years.map(({ year, posts: yearPosts }, yearIndex) => (
+          <section class="reveal" style={`animation-delay: ${yearIndex * 80}ms`}>
+            <div class="mb-6 flex items-center gap-4">
+              <!-- 年份是渐层文字，必须把底放在外层元素上（原因同页头） -->
+              <h2 class="paper-plate shrink-0 text-3xl font-extrabold tracking-tight">
+                <span class="text-gradient">{year}</span>
+              </h2>
+              <span class="h-px flex-1 bg-gradient-to-r from-line to-transparent" />
+              <span class="paper-plate shrink-0 text-xs text-ink-mute">{yearPosts.length} 篇</span>
+            </div>
+
+            <ol class="relative space-y-3 border-l border-line pl-6 sm:pl-8">
+              {yearPosts.map((post) => {
+                const cat = categoryOf(post.data.category);
+                return (
+                  <li class="group relative">
+                    {/* 时间线节点 */}
+                    <span class="absolute -left-[1.6rem] top-4 size-2.5 rounded-full border-2 border-bg bg-brand opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:-left-[2.1rem]" />
+
+                    <!-- 列表行平时没有底（只在 hover 时变色），文字直接压在视频上不可读。
+                         这里给它一块常驻的纸色底（.paper-row），hover 时再叠加深色高亮。
+                         圆角用 rounded-lg(8px) 而不是 rounded-xl(12px)：
+                         要与 .paper-plate 的 8px 一致。
+                         注意 .paper-row 自己写的 border-radius 是【无效】的——
+                         Tailwind 的 rounded-* 在 utilities 层，会压过 components 层。 -->
+                    <a
+                      href={withBase(`/blog/${post.id}/`)}
+                      class="paper-row flex flex-col gap-1.5 rounded-lg px-4 py-3.5 transition-all duration-200 hover:bg-surface-2 hover:pl-5 sm:flex-row sm:items-center sm:gap-5"
+                    >
+                      <time
+                        datetime={isoDate(post.data.pubDate)}
+                        class="shrink-0 text-xs tabular-nums text-ink-mute sm:w-24"
+                      >
+                        {formatDate(post.data.pubDate)}
+                      </time>
+
+                      <span class="min-w-0 flex-1 text-[0.95rem] font-medium leading-snug text-ink transition-colors group-hover:text-brand">
+                        {post.data.title}
+                      </span>
+
+                      <span class="flex shrink-0 items-center gap-2">
+                        <span class="chip !text-[0.7rem]">{cat.label}</span>
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </div>
+
+      <div class="mt-16 flex justify-center gap-3">
+        <a href={withBase('/tags')} class="btn btn-ghost">
+          <Icon name="tag" size={15} />
+          按标签浏览
+        </a>
+        <a href={withBase('/')} class="btn btn-primary">
+          <Icon name="home" size={15} />
+          回到首页
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

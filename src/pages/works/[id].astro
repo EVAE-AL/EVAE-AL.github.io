@@ -1,0 +1,180 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getSortedProjects, statusMeta } from '../../lib/projects';
+import { formatDate, isoDate, withBase } from '../../lib/site';
+
+export async function getStaticPaths() {
+  const projects = await getSortedProjects();
+  return projects.map((project) => ({ params: { id: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project.entry);
+
+const { title, description, role, date, stack, cover, link, repo, status } = project.data;
+const meta = statusMeta[status];
+
+const projects = await getSortedProjects();
+const index = projects.findIndex((p) => p.id === project.id);
+const prev = index > 0 ? projects[index - 1] : undefined;
+const next = index >= 0 && index < projects.length - 1 ? projects[index + 1] : undefined;
+---
+
+<BaseLayout title={title} description={description} type="article" pubDate={date} cover={cover}>
+  <article class="pb-24 pt-10 sm:pt-14">
+    <div class="container-page">
+      <!-- 面包屑 -->
+      <nav class="paper-plate mb-8 flex items-center gap-2 text-xs text-ink-mute" aria-label="面包屑">
+        <a href={withBase('/')} class="transition-colors hover:text-brand">首页</a>
+        <span class="text-line-strong">/</span>
+        <a href={withBase('/works')} class="transition-colors hover:text-brand">作品</a>
+        <span class="text-line-strong">/</span>
+        <span class="truncate text-ink-soft">{title}</span>
+      </nav>
+
+      <div class="mx-auto max-w-3xl">
+        <!-- 头部 -->
+        <header>
+          <div class="mb-5 flex flex-wrap items-center gap-2.5">
+            <span class="chip chip-brand">
+              <span class:list={['size-1.5 rounded-full', meta.dot]} />
+              {meta.label}
+            </span>
+            {role && <span class="chip">{role}</span>}
+            {date && (
+              <span class="paper-plate text-xs text-ink-mute">
+                <time datetime={isoDate(date)}>{formatDate(date)}</time>
+              </span>
+            )}
+          </div>
+
+          <h1
+            class="paper-plate text-balance text-3xl font-extrabold leading-tight tracking-tight text-ink sm:text-4xl"
+          >
+            {title}
+          </h1>
+
+          {description && (
+            <p class="paper-plate mt-5 text-pretty text-lg leading-relaxed text-ink-soft">{description}</p>
+          )}
+
+          <!-- 外链 -->
+          {
+            (link || repo) && (
+              <div class="mt-7 flex flex-wrap gap-3">
+                {link && (
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-primary"
+                  >
+                    <Icon name="link" size={15} />
+                    在线预览
+                  </a>
+                )}
+                {repo && (
+                  <a
+                    href={repo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-ghost"
+                  >
+                    <Icon name="github" size={15} />
+                    查看源码
+                  </a>
+                )}
+              </div>
+            )
+          }
+
+          {
+            stack.length > 0 && (
+              <div class="mt-6 flex flex-wrap items-center gap-2">
+                <span class="paper-plate text-xs text-ink-mute">技术栈</span>
+                {stack.map((item) => (
+                  <span class="chip !text-[0.7rem]">{item}</span>
+                ))}
+              </div>
+            )
+          }
+
+          <div class="mt-8 divider-gradient"></div>
+        </header>
+
+        <!-- 封面 -->
+        {
+          cover && (
+            <img
+              src={withBase(cover)}
+              alt={title}
+              class="mt-10 w-full rounded-md border border-line shadow-md"
+            />
+          )
+        }
+
+        <!-- 正文：长文，压一层半透明宣纸保证可读性 -->
+        {
+          project.body.trim() ? (
+            <div class="paper-panel prose-custom mt-10 p-6 sm:p-8">
+              <Content />
+            </div>
+          ) : (
+            <p class="mt-10 rounded-md border border-dashed border-line-strong px-5 py-8 text-center text-sm text-ink-mute">
+              这个作品还没有写详细介绍。在对应的 Markdown 文件里补充正文即可。
+            </p>
+          )
+        }
+
+        <div class="mt-14 divider-gradient"></div>
+
+        <!-- 上下导航 -->
+        <nav class="mt-8 grid gap-4 sm:grid-cols-2" aria-label="作品导航">
+          {
+            prev ? (
+              <a
+                href={withBase(`/works/${prev.id}/`)}
+                class="card card-hover group flex flex-col gap-2 p-5"
+              >
+                <span class="inline-flex items-center gap-1.5 text-xs text-ink-mute">
+                  <Icon name="arrow-left" size={13} />
+                  上一个
+                </span>
+                <span class="font-semibold leading-snug text-ink transition-colors group-hover:text-brand-text">
+                  {prev.data.title}
+                </span>
+              </a>
+            ) : (
+              <div class="hidden sm:block" />
+            )
+          }
+          {
+            next && (
+              <a
+                href={withBase(`/works/${next.id}/`)}
+                class="card card-hover group flex flex-col items-end gap-2 p-5 text-right"
+              >
+                <span class="inline-flex items-center gap-1.5 text-xs text-ink-mute">
+                  下一个
+                  <Icon name="arrow-right" size={13} />
+                </span>
+                <span class="font-semibold leading-snug text-ink transition-colors group-hover:text-brand-text">
+                  {next.data.title}
+                </span>
+              </a>
+            )
+          }
+        </nav>
+
+        <div class="mt-10 flex justify-center">
+          <a href={withBase('/works')} class="btn btn-ghost">
+            <Icon name="arrow-left" size={15} />
+            全部作品
+          </a>
+        </div>
+      </div>
+    </div>
+  </article>
+</BaseLayout>

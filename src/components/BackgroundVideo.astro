@@ -1,0 +1,288 @@
+---
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { withBase } from '../lib/site';
+/**
+ * 全站背景视频。
+ *
+ * 层级安排（自下而上）：
+ *   1. canvas 底色      —— body 的 background-color（会传播到画布，在最底层）
+ *   2. 本组件 fixed 层  —— z-index: -2
+ *   3. 墨晕 / 纸纹      —— body::before / body::after，z-index: -1
+ *   4. 页面内容         —— z-index: auto，恒在视频之上
+ *
+ * 组件是 fixed + pointer-events:none，不参与布局、不吃点击、不产生滚动条。
+ *
+ * 关于蒙层：原始需求是「视频上不加任何蒙层」，当前 scrim = 0，即视频原样显示。
+ * 但本站是宣纸底 + 墨色正文的阅读型站点，蒙层为 0 时正文会直接压在动态画面上，
+ * 长文阅读会比较吃力。要恢复可读性，把 scrim 调到 0.5~0.8 即可。
+ *
+ * 关于循环接缝（重要）：
+ *   这段视频首尾并不衔接。实测自然播放时相邻帧差中位数仅 0.90，
+ *   而回绕处（t=4.97s → t=0）的帧差是 18.13 —— 约 20 倍，
+ *   也就是每 5.04 秒画面会硬跳一次，看起来就是「背景有断」。
+ *
+ *   这里用【双视频交叉淡化】解决：两个 <video> 用同一个 src，
+ *   当前这条快播完时启动另一条（从 0 开始）并淡入淡出，
+ *   把接缝溶解成一次短促的叠化，而不是硬切。
+ *   非叠化期间只有一条在播放，另一条是暂停的，避免双份解码开销。
+ *
+ *   这没有改动视频内容、没有加任何滤镜，只是让循环处变连贯。
+ *   根治办法是把视频重压一遍、把叠化烤进文件里（需要 ffmpeg，本机没有）。
+ */
+export interface Props {
+  /** 视频地址 */
+  src?: string;
+  /** 蒙层浓度 0~1。0 = 视频原样，1 = 完全遮住视频 */
+  scrim?: number;
+  /** 循环交叉淡化时长（秒）。0 = 关闭，退回原来的硬切 */
+  fade?: number;
+  /** 视频加载失败时显示的静态画面（真实视频帧） */
+  poster?: string;
+}
+
+const {
+  // 视频地址。默认值由下面的构建期检测决定。
+  src: srcProp,
+  scrim = 0,
+  fade = 0.7,
+  poster: posterProp,
+} = Astro.props as Props;
+
+/**
+ * 自托管优先。
+ *
+ * 远程地址（motionsites.org）会【间歇性挂起传输】：媒体加载器必定发
+ * `Range: bytes=0-`，对方有时连响应头都不给、有时给了 200 头之后 body 完全不动，
+ * <video> 35 秒后报 MEDIA_ELEMENT_ERROR: Format error。
+ * 只要把文件放进 public/bg-video.mp4，构建时就会自动改用它 ——
+ * 本地文件没有 Range 问题、不依赖第三方、首屏也不用等 7MB 远程下载。
+ *
+ * 用 import.meta.url 而不是 process.cwd()：后者依赖从哪里执行构建，不可靠。
+ */
+const LOCAL_VIDEO = fileURLToPath(new URL('../../public/bg-video.mp4', import.meta.url));
+const hasLocalVideo = existsSync(LOCAL_VIDEO);
+const REMOTE_VIDEO = 'https://motionsites.org/assets/prompt-media/6fb049e38e9593f9699c.mp4';
+const src = srcProp ?? (hasLocalVideo ? withBase('/bg-video.mp4') : REMOTE_VIDEO);
+
+// 这张图是从 bg-video.mp4 里直接抽的 t=0 静帧（1920×1080，342 KB），不是截图。
+//
+// 曾经踩过的坑：旧 poster 是从一张【整页截图】里裁的，只裁掉了顶部 120px 的头部 UI，
+// 页面主体（Hero 标题、按钮、统计、卡片）其实全烧在图里 —— 平时被视频盖着看不出来，
+// 但刷新时视频还没就绪，这张图顶上来当兜底背景，那些半透明旧 UI 就会「闪一下像图片」。
+// 换成从视频源抽的帧后：① 没有任何 UI 残影；② 16:9 尺寸与视频一致，
+// background-size: cover 与 video 的 object-fit: cover 裁切完全对齐，
+// poster → video 的交接不会跳画面。
+//
+// 作用有两个：
+//  1) 视频还没下载完 / 被第三方站点限流 / 根本加载不出来时，页面显示的是
+//     真实的拱桥画面而不是一块空白纸色 —— 整个视觉设计是按视频调过的，
+//     退化成纯纸色会让纸色底、文字层级全部失去意义。
+//  2) 首屏不必等 7 MB 视频才开始有成形的背景。
+const poster = posterProp ?? withBase('/bg-poster.jpg');
+---
+
+<div
+  class="bg-video"
+  style={`--bg-video-scrim:${Math.round(scrim * 100)}%;--bg-video-fade:${fade}s;--bg-video-poster:url('${poster}')`}
+  data-fade={fade}
+>
+  <video
+    class="bg-video__media is-active"
+    data-layer="0"
+    src={src}
+    autoplay
+    loop
+    muted
+    playsinline
+    preload="auto"
+    aria-hidden="true"></video>
+  <video
+    class="bg-video__media"
+    data-layer="1"
+    src={src}
+    loop
+    muted
+    playsinline
+    preload="none"
+    aria-hidden="true"></video>
+  <div class="bg-video__scrim"></div>
+</div>
+
+<style>
+  .bg-video {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    pointer-events: none;
+    background-color: var(--bg);
+    /* poster 兜底：视频没下来 / 被第三方站点限流 / 浏览器禁止自动播放时，
+       显示的是从真实视频帧裁出来的静态画面，而不是一块空白纸色。
+       视频一旦能播，它自己会盖在这层上面（video 是后绘制的子元素）。 */
+    background-image: var(--bg-video-poster, none);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .bg-video__media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* 两条视频叠在一起，靠 opacity 做交叉淡化 */
+    opacity: 0;
+  }
+
+  .bg-video__media.is-active {
+    opacity: 1;
+  }
+
+  /* 与底色同色、可调浓度的蒙层：浅色主题下是「宣纸压住视频」，
+     深色主题下自动变成「墨色压住视频」，不用分别写两套 */
+  .bg-video__scrim {
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--bg) var(--bg-video-scrim), transparent);
+  }
+
+  /* 系统开了「减少动态效果」就不显示视频，退回静态纸面 */
+  @media (prefers-reduced-motion: reduce) {
+    .bg-video__media {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  const FADE = Number(document.querySelector<HTMLElement>('.bg-video')?.dataset.fade ?? 0.7);
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false;
+
+  /* ---------- 视频加载失败时自动重试 ----------
+
+     实测（CDP Network 抓包）对方服务器会【间歇性挂起传输】：
+     媒体加载器必定发 `Range: bytes=0-`，服务器有时连响应头都不给，
+     有时给了 200 头之后 body 完全不动，35 秒后 <video> 报
+     MEDIA_ELEMENT_ERROR: Format error（code 4）。
+     同一时刻普通的 fetch(HEAD) 却能拿到 200，说明不是网络不通，是对方在挂。
+
+     因为失败是间歇性的，隔几秒重试一次的成功率不低。
+     重试期间由 `.bg-video` 的 poster 静态画面兜底，页面视觉不会塌。
+
+     注意：重试只在【所有层都没数据】时进行，避免打断正常播放/交叉淡化。 */
+  const RETRY_DELAYS = [4000, 15000, 40000]; // 最多 3 次，逐步拉长
+  let retryCount = 0;
+
+  const anyPlayable = () =>
+    [...document.querySelectorAll<HTMLVideoElement>('.bg-video__media')].some(
+      (v) => v.readyState >= 2
+    );
+
+  const scheduleRetry = () => {
+    if (retryCount >= RETRY_DELAYS.length || anyPlayable()) return;
+    const delay = RETRY_DELAYS[retryCount];
+    retryCount += 1;
+    window.setTimeout(() => {
+      if (anyPlayable()) return;
+      for (const v of document.querySelectorAll<HTMLVideoElement>('.bg-video__media')) {
+        // 加查询参数强制重新发起请求，绕开浏览器里那条已挂起的连接；
+        // 不带参数的话浏览器可能直接从那条失败的请求上再次失败。
+        const base = (v.currentSrc || v.src).split('?')[0];
+        v.src = `${base}?r=${retryCount}`;
+        v.load();
+        if (v.classList.contains('is-active')) void v.play().catch(() => {});
+      }
+    }, delay);
+  };
+
+  for (const v of document.querySelectorAll<HTMLVideoElement>('.bg-video__media')) {
+    v.addEventListener('error', scheduleRetry);
+    // 有些失败不触发 error（一直卡在 networkState=2 LOADING），
+    // 所以再加一道「迟迟没有数据」的兜底检查。
+    v.addEventListener('stalled', () => window.setTimeout(scheduleRetry, 20000));
+  }
+  // 第一道兜底：45 秒还没有任何一层可播，就重试
+  window.setTimeout(() => {
+    if (!anyPlayable()) scheduleRetry();
+  }, 45000);
+
+  if (FADE > 0 && !reduceMotion) {
+    const layers = [...document.querySelectorAll<HTMLVideoElement>('.bg-video__media')];
+
+    if (layers.length === 2) {
+      // CSS 过渡时长跟组件参数保持一致，避免 JS 与 CSS 各说各话
+      layers.forEach((el) => {
+        el.style.transition = `opacity ${FADE}s linear`;
+      });
+
+      let cur = layers[0];
+      let nxt = layers[1];
+      let swapping = false;
+      let primed = false;
+
+      // 第二条视频用 preload="none"：同一个远程大文件若两条同时拉流，
+      // 实测会互相抢带宽、双方都卡在 readyState 0；顺序加载则第二条通常直接命中 HTTP 缓存。
+      // 所以提前 LEAD 秒才开始预热第二条，而不是一开始就让它预载。
+      const LEAD = Math.max(FADE + 0.6, 1.3);
+
+      const swap = () => {
+        swapping = true;
+        // 注意：这里【不要】再重置 nxt.currentTime。
+        // 预热阶段（dur - LEAD）已经让它从 0 开始播了，此刻它在 LEAD-FADE 秒处；
+        // 再重置会让入画的视频倒退一截，叠化中途出现顿挫。
+        void nxt.play().catch(() => {});
+
+        // 等浏览器应用上「已加载、不透明」之后再开始淡入，
+        // 否则第一帧可能还是透明的。
+        requestAnimationFrame(() => {
+          nxt.classList.add('is-active');
+          cur.classList.remove('is-active');
+        });
+
+        // 叠化结束后切换主次，把退下来的那条停掉、复位，等下一轮
+        window.setTimeout(
+          () => {
+            const old = cur;
+            cur = nxt;
+            nxt = old;
+            old.pause();
+            try {
+              old.currentTime = 0;
+            } catch {
+              /* 忽略 */
+            }
+            swapping = false;
+            primed = false;
+          },
+          FADE * 1000 + 80
+        );
+      };
+
+      const tick = () => {
+        const dur = cur.duration;
+        if (!swapping && dur && isFinite(dur) && cur.currentTime > 0) {
+          if (cur.currentTime >= dur - LEAD && !primed) {
+            primed = true;
+            // 预热：开始加载并播放第二条，但还不可见
+            try {
+              nxt.currentTime = 0;
+            } catch {
+              /* 忽略 */
+            }
+            void nxt.play().catch(() => {});
+          }
+          // 安全兜底：第二条没真正就绪就【不切换】。
+          // 否则 cur 淡出的同时 nxt 还是空的，背景会整块变空——
+          // 那比原来的硬切糟糕得多。宁可这一轮不叠化。
+          if (cur.currentTime >= dur - FADE && nxt.readyState >= 2 && isFinite(nxt.duration)) {
+            swap();
+          }
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  }
+</script>

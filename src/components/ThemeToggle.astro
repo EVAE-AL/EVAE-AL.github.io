@@ -1,0 +1,180 @@
+---
+import Icon from './Icon.astro';
+
+const isDark = false;
+---
+
+<button
+  id="theme-toggle"
+  type="button"
+  class="relative grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition-all duration-300 hover:border-brand hover:text-brand hover:bg-brand-soft"
+  aria-label="切换深浅色模式"
+  title="切换深浅色模式"
+>
+  <span class="block dark:hidden"><Icon name="moon" size={17} /></span>
+  <span class="hidden dark:block"><Icon name="sun" size={17} /></span>
+</button>
+
+<script>
+  /* ============================================================
+     主题切换：从点击位置向外扩散的圆形揭示（clip-path circle）
+     ============================================================
+
+     做法：document.startViewTransition() 会在切换前后各截一张整页快照，
+     叠在页面最上层。默认两帧交叉淡化；我们关掉默认动画（见 global.css），
+     只给「新快照」一个 clip-path: circle()——圆心=点击点、半径从 0 扩到
+     刚好盖住整个视口，旧快照留在下面不动。
+
+     为什么不用「自己铺一层新主题色块再放大」：本站整页是一段持续播放的
+     背景视频，色块只能盖住纯色，视频和页面内容会瞬间消失；快照方案里
+     新旧两帧内容严格对齐，圆边扫过的每一处只是颜色变了，观感是「擦开」
+     而不是「盖住」，所以才是无缝的。
+
+     不支持 View Transition 的浏览器（Safari < 18、Firefox < 144 等）
+     或系统开启「减少动态效果」时，直接瞬时切换——功能不受影响。
+     ============================================================ */
+
+  type Origin = { x: number; y: number };
+  type ViewTransitionLike = {
+    ready: Promise<void>;
+    finished: Promise<void>;
+    skipTransition?: () => void;
+  };
+  type ThemeApi = {
+    current: () => 'light' | 'dark';
+    set: (theme: 'light' | 'dark') => 'light' | 'dark';
+    toggle: () => 'light' | 'dark';
+  };
+
+  /* 缓动：easeOutQuad（cubic-bezier(0.25,0.46,0.45,0.94)）。
+     为什么不用站点入场动画那条 easeOutExpo —— 圆和 fade-up 不一样：
+     半径 1500px 的大圆在 expo 曲线下，前 13% 时间就扫掉 56% 半径，
+     后面的边沿却在角落里缓慢蠕动，看起来会「先冲一下、再拖尾」。
+     换 quad 后实测面积覆盖在 1/4、1/2、3/4 时间点约 14% / 61% / 89%，
+     扩张速度前后都均匀，才是「顺畅、不抢戏」。 */
+  const EASING = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+
+  const startViewTransition = (document as Document & {
+    startViewTransition?: (callback: () => void) => ViewTransitionLike;
+  }).startViewTransition;
+
+  const btn = document.getElementById('theme-toggle') as HTMLButtonElement | null;
+  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  /** 主题 API 由 <head> 里的内联脚本（ThemeScript.astro）提供 */
+  const themeApi = () => (window as any).__theme as ThemeApi | undefined;
+
+  let busy = false;
+  let queued: Origin | null = null;
+
+  /**
+   * 圆心：优先真实点击坐标。
+   * 键盘（Enter / Space）触发时 MouseEvent.detail 为 0 且坐标为 0，
+   * 这时退回到按钮中心——不然圆会从屏幕左上角冒出来。
+   */
+  function clickOrigin(event: MouseEvent): Origin {
+    const keyboard = event.detail === 0 || (event.clientX === 0 && event.clientY === 0);
+    if (!keyboard) return { x: event.clientX, y: event.clientY };
+
+    const rect = btn?.getBoundingClientRect();
+    return {
+      x: rect ? rect.left + rect.width / 2 : window.innerWidth / 2,
+      y: rect ? rect.top + rect.height / 2 : window.innerHeight / 2,
+    };
+  }
+
+  /** 盖满视口所需半径：取该点到四个角中最远的那个 */
+  function coverRadius({ x, y }: Origin) {
+    return Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  }
+
+  /**
+   * 时长随半径变化：小圆不至于慢吞吞，大圆不至于一眨眼就没了。
+   * 1440×900 视口、按钮在右上角时半径约 1500px → 约 650ms；
+   * 手机上按钮离最远角通常 500~800px → 400~450ms。
+   */
+  function durationFor(radius: number) {
+    return Math.min(820, Math.max(400, radius * 0.42));
+  }
+
+  function reveal(origin: Origin) {
+    const api = themeApi();
+    if (!api || !startViewTransition) return;
+
+    const next = api.current() === 'dark' ? 'light' : 'dark';
+    const radius = coverRadius(origin);
+    const duration = durationFor(radius);
+
+    busy = true;
+
+    /* 回调里【同步】把主题落到 DOM：快照在回调结束后采集，
+       所以「新快照」拿到的已经是新主题。切完再发 theme-change，
+       画廊的 WebGL 纹理也在这时重绘，新快照里就是新配色。 */
+    let transition: ViewTransitionLike;
+    try {
+      transition = startViewTransition.call(document, () => {
+        api.set(next);
+      });
+    } catch {
+      // 极端情况下（例如同一帧里另一个 transition 正在创建）创建失败，
+      // 退回瞬时切换，绝不能让 busy 卡住后续点击
+      busy = false;
+      api.toggle();
+      return;
+    }
+
+    transition.ready
+      .then(() => {
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${origin.x}px ${origin.y}px)`,
+              `circle(${radius}px at ${origin.x}px ${origin.y}px)`,
+            ],
+          },
+          {
+            duration,
+            easing: EASING,
+            // 伪元素是独立的一层，WAAPI 只能这样定位它
+            pseudoElement: '::view-transition-new(root)',
+            // 两端都填充：避免动画真正开始前的那一帧露出「未裁剪」的新快照
+            fill: 'both',
+          } as KeyframeAnimationOptions
+        );
+      })
+      .catch(() => {
+        /* 快照没就绪（例如立刻又被 skipTransition）时忽略，主题已经切好了 */
+      });
+
+    const done = () => {
+      busy = false;
+      if (queued) {
+        const nextOrigin = queued;
+        queued = null;
+        reveal(nextOrigin);
+      }
+    };
+    transition.finished.then(done, done);
+  }
+
+  btn?.addEventListener('click', (event) => {
+    const api = themeApi();
+    if (!api) return;
+
+    const origin = clickOrigin(event);
+
+    // 连点：等这一轮放完再放下一轮（两次点击=切回原主题，语义一致）
+    if (busy) {
+      queued = origin;
+      return;
+    }
+
+    const canAnimate = typeof startViewTransition === 'function';
+    if (!canAnimate || REDUCED_MOTION.matches) {
+      api.toggle();
+      return;
+    }
+
+    reveal(origin);
+  });
+</script>

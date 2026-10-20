@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import { withBase } from '../lib/site';
+---
+
+<BaseLayout title="页面未找到" description="抱歉，你访问的页面不存在。">
+  <section class="grid min-h-[70vh] place-items-center py-20">
+    <div class="container-page text-center">
+      <!-- 底放在外层 p、渐层放内层 span：.text-gradient 的 background-clip:text
+           会把同一元素上的所有背景一起裁进字形，放同层会把底裁没。
+           这三处文字都直接压在视频上。 -->
+      <p class="paper-plate mx-auto text-[6rem] font-extrabold leading-none tracking-tighter text-ink sm:text-[9rem]">
+        <span class="text-gradient">404</span>
+      </p>
+      <h1 class="paper-plate mx-auto mt-4 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+        这个页面走丢了
+      </h1>
+      <p class="paper-plate mx-auto mt-4 max-w-md text-pretty leading-relaxed text-ink-soft">
+        你访问的地址不存在，或者文章已经被移动到别处。要不回到首页看看？
+      </p>
+
+      <div class="mt-9 flex flex-wrap justify-center gap-3">
+        <a href={withBase('/')} class="btn btn-primary">
+          <Icon name="home" size={15} />
+          回到首页
+        </a>
+        <a href={withBase('/archive')} class="btn btn-ghost">
+          <Icon name="archive" size={15} />
+          浏览归档
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

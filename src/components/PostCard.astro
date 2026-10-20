@@ -1,0 +1,180 @@
+---
+import { withBase, formatDate } from '../lib/site';
+import { categoryOf } from '../lib/categories';
+import Icon from './Icon.astro';
+
+export interface Props {
+  post: {
+    id: string;
+    data: {
+      title: string;
+      description?: string;
+      pubDate: Date;
+      tags?: string[];
+      category?: string;
+      cover?: string;
+      featured?: boolean;
+    };
+    readingMinutes?: number;
+  };
+  /** featured: 大卡片，用于首页头图区 */
+  variant?: 'default' | 'featured' | 'compact';
+  index?: number;
+}
+
+const { post, variant = 'default', index = 0 } = Astro.props as Props;
+const { title, description, pubDate, tags = [], category = 'note', cover } = post.data;
+const cat = categoryOf(category);
+
+const href = withBase(`/blog/${post.id}/`);
+const minutes = post.readingMinutes ?? 1;
+
+// 四套墨色浓淡，避免卡片之间过于雷同
+const gradients = [
+  'from-brand-600 via-brand-700 to-brand-900',
+  'from-brand-700 via-brand-800 to-brand-900',
+  'from-brand-500 via-brand-700 to-brand-800',
+  'from-brand-800 via-brand-900 to-brand-900',
+];
+const gradient = gradients[index % gradients.length];
+---
+
+{
+  variant === 'compact' ? (
+    <a
+      href={href}
+      class="group flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-surface-2"
+    >
+      <span class="mt-2 size-1.5 shrink-0 rounded-sm bg-seal" />
+      <span class="min-w-0 flex-1">
+        <span class="block truncate text-sm font-medium text-ink transition-colors group-hover:text-brand-text">
+          {title}
+        </span>
+        <span class="mt-1 block text-xs text-ink-mute">{formatDate(pubDate)}</span>
+      </span>
+    </a>
+  ) : variant === 'featured' ? (
+    <a href={href} class="card card-hover card-gradient-border group block overflow-hidden !p-0">
+      <div class="grid md:grid-cols-2">
+        {/* 封面 / 墨色占位 */}
+        <div class:list={['relative min-h-[13rem] overflow-hidden bg-gradient-to-br', gradient]}>
+          {cover ? (
+            <img
+              src={withBase(cover)}
+              alt={title}
+              loading="lazy"
+              class="absolute inset-0 size-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+          ) : (
+            <>
+              {/* 墨晕：在浓墨里留出数处空白，如水墨渗化 */}
+              <div
+                class="absolute inset-0"
+                style="background-image: radial-gradient(circle at 28% 24%, rgba(250,248,244,.24), transparent 50%), radial-gradient(circle at 78% 74%, rgba(250,248,244,.14), transparent 46%);"
+              />
+              {/* 分类汉字，如题字 */}
+              <div class="absolute inset-0 grid place-items-center">
+                <span
+                  class="animate-float-slow select-none text-[4.5rem] font-bold leading-none text-white/85"
+                  style="font-family: var(--font-serif)"
+                >
+                  {cat.char}
+                </span>
+              </div>
+            </>
+          )}
+
+          <span class="absolute left-4 top-4">
+            <span
+              class="rounded-sm bg-black/30 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm"
+            >
+              {cat.label}
+            </span>
+          </span>
+          <span class="absolute right-4 top-4">
+            <span class="rounded-sm bg-seal px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+              精选
+            </span>
+          </span>
+        </div>
+
+        {/* 内容 */}
+        <div class="flex flex-col justify-center gap-4 p-7 lg:p-9">
+          <div class="flex flex-wrap items-center gap-2 text-xs text-ink-mute">
+            <span class="inline-flex items-center gap-1.5">
+              <Icon name="calendar" size={13} />
+              {formatDate(pubDate)}
+            </span>
+            <span class="text-line-strong">·</span>
+            <span class="inline-flex items-center gap-1.5">
+              <Icon name="clock" size={13} />
+              约 {minutes} 分钟
+            </span>
+          </div>
+
+          <h3
+            class="text-balance text-2xl font-bold leading-snug tracking-tight text-ink transition-colors group-hover:text-brand-text lg:text-[1.75rem]"
+          >
+            {title}
+          </h3>
+
+          {description && (
+            <p class="line-clamp-3 text-[0.98rem] leading-relaxed text-ink-soft">{description}</p>
+          )}
+
+          <div class="flex flex-wrap items-center gap-2 pt-1">
+            {tags.slice(0, 3).map((tag) => <span class="chip">{tag}</span>)}
+          </div>
+
+          <span class="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-brand-text">
+            阅读全文
+            <Icon
+              name="arrow-right"
+              size={15}
+              class="transition-transform duration-300 group-hover:translate-x-1"
+            />
+          </span>
+        </div>
+      </div>
+    </a>
+  ) : (
+    <a
+      href={href}
+      class="card card-hover card-gradient-border group flex h-full flex-col overflow-hidden !p-0"
+    >
+      {/* 顶部朱红细线，如书页红丝 */}
+      <div class="h-0.5 w-full bg-seal" />
+
+      <div class="flex flex-1 flex-col gap-3.5 p-6">
+        <div class="flex items-center justify-between gap-3">
+          <span class="chip chip-brand">{cat.label}</span>
+          <span class="text-xs text-ink-mute">{formatDate(pubDate)}</span>
+        </div>
+
+        <h3
+          class="text-lg font-bold leading-snug tracking-tight text-ink transition-colors duration-200 group-hover:text-brand-text"
+        >
+          {title}
+        </h3>
+
+        {description && (
+          <p class="line-clamp-3 flex-1 text-[0.95rem] leading-relaxed text-ink-soft">
+            {description}
+          </p>
+        )}
+
+        <div class="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3.5">
+          <div class="flex flex-wrap gap-1.5">
+            {tags.slice(0, 2).map((tag) => <span class="chip !text-[0.7rem]">{tag}</span>)}
+          </div>
+          <span
+            class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-ink-mute transition-colors group-hover:text-brand-text"
+          >
+            <Icon name="clock" size={12} />
+            {minutes} 分钟
+          </span>
+        </div>
+      </div>
+    </a>
+  )
+}

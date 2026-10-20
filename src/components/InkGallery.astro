@@ -1,0 +1,139 @@
+---
+export interface GalleryItem {
+  id: string;
+  title: string;
+  /** 封面大字 */
+  char: string;
+  /** 角标文字 */
+  meta: string;
+  href: string;
+}
+
+export interface Props {
+  items: GalleryItem[];
+  /** 画布高度（px） */
+  height?: number;
+  /** 弯曲程度，0 为水平直线排列 */
+  bend?: number;
+  /** 滚轮灵敏度 */
+  speed?: number;
+  /** 跟随缓动，越小越慢 */
+  ease?: number;
+  /** 卡片配色：auto 跟随站点主题 | ink 墨色底 | paper 宣纸底 */
+  theme?: 'ink' | 'paper' | 'auto';
+  hint?: string;
+}
+
+const {
+  items,
+  height = 560,
+  bend = 0,
+  speed = 2,
+  ease = 0.06,
+  theme = 'auto',
+  hint = '滚动或拖动浏览 · 点击查看',
+} = Astro.props as Props;
+---
+
+<div
+  class="ink-gallery relative w-full overflow-hidden rounded-md border border-line"
+  style={`height:clamp(340px, 55vh, ${height}px)`}
+  data-items={JSON.stringify(items)}
+  data-bend={bend}
+  data-speed={speed}
+  data-ease={ease}
+  data-theme={theme}
+>
+  <canvas class="ink-gallery-canvas absolute inset-0 size-full" aria-hidden="true"></canvas>
+
+  <!-- 无 JS / WebGL 不可用时的降级列表 -->
+  <ul
+    class="ink-gallery-fallback absolute inset-0 grid place-content-center gap-2.5 overflow-auto p-6 text-center"
+  >
+    {
+      items.map((item) => (
+        <li>
+          <a
+            href={item.href}
+            class="text-sm text-brand-text underline-offset-4 transition-colors hover:underline"
+          >
+            {item.title}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <p
+    class="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs text-ink-mute"
+  >
+    {hint}
+  </p>
+</div>
+
+<style>
+  /* 面板底色与站点其它面板一样是半透明宣纸，但用的是【画廊专用】浓度
+     --gallery-panel-alpha，与长文的 --panel-alpha 分开，
+     这样调画廊不会连带把文章页的阅读底也改了。
+     原来的 bg-surface-2 是不透明块，会把背景视频整块挡住。 */
+  .ink-gallery {
+    background-color: color-mix(in srgb, var(--surface) var(--gallery-panel-alpha), transparent);
+  }
+
+  /* 默认显示降级列表；JS 初始化成功后切换到画布 */
+  .ink-gallery-canvas {
+    opacity: 0;
+    touch-action: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .ink-gallery.is-ready .ink-gallery-canvas {
+    opacity: 1;
+  }
+
+  .ink-gallery.is-ready .ink-gallery-fallback {
+    display: none;
+  }
+</style>
+
+<script>
+  import { initInkGallery } from '../scripts/ink-gallery';
+
+  const roots = document.querySelectorAll<HTMLElement>('.ink-gallery[data-items]');
+
+  const boot = (root: HTMLElement) => {
+    let items: unknown[] = [];
+    try {
+      items = JSON.parse(root.dataset.items ?? '[]');
+    } catch {
+      return;
+    }
+    if (!Array.isArray(items) || items.length === 0) return;
+
+    initInkGallery(root, {
+      bend: Number(root.dataset.bend ?? 0),
+      speed: Number(root.dataset.speed ?? 2),
+      ease: Number(root.dataset.ease ?? 0.06),
+      theme: (root.dataset.theme ?? 'auto') as 'ink' | 'paper' | 'auto',
+    }).catch(() => {
+      // 初始化失败就保持降级列表，页面依然可用
+    });
+  };
+
+  // 进入视口附近才初始化，避免拖慢首屏
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          observer.unobserve(entry.target);
+          boot(entry.target as HTMLElement);
+        });
+      },
+      { rootMargin: '300px' }
+    );
+    roots.forEach((el) => observer.observe(el));
+  } else {
+    roots.forEach(boot);
+  }
+</script>

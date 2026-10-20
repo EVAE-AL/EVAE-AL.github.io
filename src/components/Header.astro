@@ -1,0 +1,217 @@
+---
+import site, { withBase } from '../lib/site';
+import Icon from './Icon.astro';
+import ThemeToggle from './ThemeToggle.astro';
+
+const pathname = Astro.url.pathname.replace(import.meta.env.BASE_URL.replace(/\/$/, ''), '') || '/';
+
+function isActive(url: string) {
+  if (url === '/') return pathname === '/' || pathname === '';
+  return pathname.startsWith(url);
+}
+---
+
+<header
+  id="site-header"
+  class="sticky top-0 z-50 w-full border-b border-transparent transition-all duration-300"
+>
+  <div class="container-page flex h-16 items-center justify-between gap-4">
+    <!-- Logo -->
+    <a
+      href={withBase('/')}
+      class="group flex items-center gap-2.5 shrink-0"
+      aria-label={`${site.site.title} 首页`}
+    >
+      <span
+        class="grid size-9 place-items-center rounded-sm bg-seal text-white shadow-sm transition-transform duration-300 group-hover:scale-105"
+      >
+        <Icon name="sparkles" size={18} />
+      </span>
+      <span class="text-[1.05rem] font-bold tracking-tight text-ink">
+        {site.site.title}
+      </span>
+    </a>
+
+    <!-- 桌面导航 -->
+    <nav class="hidden items-center gap-1 md:flex" aria-label="主导航">
+      {
+        site.nav.map((item) => (
+          <a
+            href={withBase(item.url)}
+            class:list={[
+              'relative rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-200',
+              isActive(item.url)
+                ? 'text-brand-text'
+                : 'text-ink-soft hover:text-ink',
+            ]}
+            aria-current={isActive(item.url) ? 'page' : undefined}
+          >
+            {item.name}
+            {isActive(item.url) && (
+              <span class="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-sm bg-seal" />
+            )}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <nav class="hidden items-center gap-1 sm:flex" aria-label="社交链接">
+        {
+          site.social
+            .filter((s) => s.icon !== 'rss')
+            .map((item) => (
+              <a
+                href={item.url}
+                target={item.url.startsWith('http') ? '_blank' : undefined}
+                rel={item.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                class="grid size-9 place-items-center rounded-full text-ink-mute transition-all duration-200 hover:bg-brand-soft hover:text-brand"
+                title={item.name}
+                aria-label={item.name}
+              >
+                <Icon name={item.icon} size={17} />
+              </a>
+            ))
+        }
+      </nav>
+
+      <ThemeToggle />
+
+      <!-- 移动端菜单按钮 -->
+      <button
+        id="mobile-menu-btn"
+        type="button"
+        class="grid size-9 place-items-center rounded-full border border-line bg-surface text-ink-soft transition-colors hover:border-brand hover:text-brand md:hidden"
+        aria-label="打开菜单"
+        aria-expanded="false"
+        aria-controls="mobile-menu"
+      >
+        <span class="block" data-menu-icon="open"><Icon name="menu" size={17} /></span>
+        <span class="hidden" data-menu-icon="close"><Icon name="close" size={17} /></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 移动端展开菜单 -->
+  <div
+    id="mobile-menu"
+    class="hidden border-t border-line bg-surface/95 backdrop-blur-lg md:hidden"
+  >
+    <nav class="container-page flex flex-col gap-1 py-3" aria-label="移动端导航">
+      {
+        site.nav.map((item) => (
+          <a
+            href={withBase(item.url)}
+            class:list={[
+              'rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              isActive(item.url)
+                ? 'bg-brand-soft text-brand-text'
+                : 'text-ink-soft hover:bg-surface-2 hover:text-ink',
+            ]}
+          >
+            {item.name}
+          </a>
+        ))
+      }
+      <div class="my-2 divider-gradient"></div>
+      <div class="flex items-center gap-2 px-1">
+        {
+          site.social.map((item) => (
+            <a
+              href={item.url}
+              class="grid size-9 place-items-center rounded-full border border-line text-ink-mute transition-colors hover:border-brand hover:text-brand"
+              aria-label={item.name}
+              title={item.name}
+            >
+              <Icon name={item.icon} size={16} />
+            </a>
+          ))
+        }
+      </div>
+    </nav>
+  </div>
+</header>
+
+<style>
+  /* ------------------------------------------------------------------
+     页面顶部：头部自带一层「纸色渐隐」底。
+
+     背景换成全屏视频后，头部在页面顶部是透明的（原本压在宣纸色上没有
+     问题），导航文字于是直接压在视频上。实测：
+       朱红激活项『归档』在亮蓝帧 (#1560a6) 上只有 1.29:1 —— 几乎不可读；
+       滚动之后头部有纸底，同一行字是 8.70:1。
+     所以这里给头部补一层自己的背景。
+
+     这一层【只属于头部】，改动不涉及视频本身；它向下渐隐到完全透明，
+     所以视频的鲜亮度只在头部那一条高度内被影响。
+
+     浓度不是随手定的：朱红 #8c2620 的相对亮度只有 0.069，要压到 4.5:1
+     以上，纸色覆盖率在视频最亮和最暗两端都必须 ≥80%。因此文字所在的
+     34%~66% 高度区间保持在 80% 以上，最后 24% 高度内渐隐归零，
+     这样底边不会出现硬接缝。
+     ------------------------------------------------------------------ */
+  #site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg) 93%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 88%, transparent) 45%,
+      color-mix(in srgb, var(--bg) 86%, transparent) 66%,
+      color-mix(in srgb, var(--bg) 70%, transparent) 82%,
+      transparent 100%
+    );
+    opacity: 1;
+    transition: opacity 300ms ease;
+  }
+
+  /* 滚动后头部已经有实底纸面，这层渐隐就退场，避免两层叠加 */
+  #site-header.is-scrolled::before {
+    opacity: 0;
+  }
+</style>
+
+<script>
+  const header = document.getElementById('site-header');
+  const btn = document.getElementById('mobile-menu-btn');
+  const menu = document.getElementById('mobile-menu');
+  const iconOpen = btn?.querySelector('[data-menu-icon="open"]');
+  const iconClose = btn?.querySelector('[data-menu-icon="close"]');
+
+  // 滚动时给头部加背景与阴影
+  const onScroll = () => {
+    if (!header) return;
+    const scrolled = window.scrollY > 8;
+    header.classList.toggle('is-scrolled', scrolled);
+    // border-line 与 border-transparent 必须【互斥】。
+    // 两条工具类都在 @layer utilities 里，同时挂在元素上时胜负只由 CSS 生成顺序决定，
+    // 实测会出现「已经滚动了但边框仍是透明」的情况。
+    header.classList.toggle('border-line', scrolled);
+    header.classList.toggle('border-transparent', !scrolled);
+    header.classList.toggle('bg-surface/80', scrolled);
+    header.classList.toggle('backdrop-blur-lg', scrolled);
+    header.classList.toggle('shadow-sm', scrolled);
+  };
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  // 移动端菜单开关
+  const setOpen = (open: boolean) => {
+    if (!menu || !btn) return;
+    menu.classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', String(open));
+    btn.setAttribute('aria-label', open ? '关闭菜单' : '打开菜单');
+    iconOpen?.classList.toggle('hidden', open);
+    iconClose?.classList.toggle('hidden', !open);
+  };
+
+  btn?.addEventListener('click', () => {
+    setOpen(menu?.classList.contains('hidden') ?? false);
+  });
+
+  // 点击导航后自动收起
+  menu?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+</script>

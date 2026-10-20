@@ -1,0 +1,114 @@
+---
+import site, { withBase } from '../lib/site';
+import Icon from './Icon.astro';
+
+export interface Props {
+  totalPosts: number;
+  totalTags: number;
+  latestYear?: number;
+}
+
+const { totalPosts, totalTags, latestYear } = Astro.props as Props;
+
+const stats = [
+  { label: '篇文章', value: totalPosts, icon: 'archive' },
+  { label: '个标签', value: totalTags, icon: 'tag' },
+  { label: '年至今', value: latestYear ?? new Date().getFullYear(), icon: 'calendar' },
+];
+---
+
+<section class="relative overflow-hidden pb-16 pt-14 sm:pt-20">
+  <!-- 装饰性墨晕（用 --brand，随主题自动换算深浅） -->
+  <div
+    class="pointer-events-none absolute -left-24 top-0 size-72 rounded-full bg-brand/10 blur-3xl animate-float-slow"
+    aria-hidden="true"
+  >
+  </div>
+  <div
+    class="pointer-events-none absolute -right-20 top-16 size-80 rounded-full bg-brand/8 blur-3xl animate-float-slow"
+    style="animation-delay: -2.5s"
+    aria-hidden="true"
+  >
+  </div>
+
+  <!-- 朱红印章：全站点睛（改成你的字号或别字） -->
+  <div class="pointer-events-none absolute right-8 top-14 hidden lg:block" aria-hidden="true">
+    <div class="seal-stamp">墨</div>
+  </div>
+
+  <div class="container-page relative">
+    <!-- 居中版式：整块 mx-auto，文字 text-center。
+         hero-content 重定义文字色阶；每行标题/描述/统计各自用 .hero-plate
+         加一块【紧贴字形】的纸色底（见 global.css）——不是一整块大面板。
+         Hero 整块文字都是深墨色，直接压在视频上时，
+         视频里深色的部分（拱桥、废墟）会让文字彻底消失。 -->
+    <div class="hero-content mx-auto max-w-3xl text-center">
+      <span
+        class="reveal chip chip-brand mb-5 !px-3 !py-1.5 !text-[0.8rem] shadow-sm"
+        style="animation-delay: 0ms"
+      >
+        <Icon name="sparkles" size={14} />
+        欢迎来到我的数字花园
+      </span>
+
+      <h1
+        class="reveal text-4xl font-extrabold leading-[1.15] tracking-tight text-ink sm:text-5xl lg:text-6xl"
+        style="animation-delay: 80ms"
+      >
+        <span class="paper-plate mx-auto block">{site.site.title}</span>
+        <!-- 渐层文字必须【单独一层】套在纸色底里面：
+             .text-gradient 用了 background-clip:text，它会把该元素上的
+             所有背景（包括 background-color）一起裁进字形，
+             直接加在同一个元素上会把底也裁没。 -->
+        <span class="paper-plate mx-auto mt-1 block">
+          <span class="text-gradient animate-gradient-pan">
+            {site.site.tagline.split('，')[0] || '记录与思考'}
+          </span>
+        </span>
+      </h1>
+
+      <p
+        class="paper-plate reveal mx-auto mt-6 max-w-2xl text-pretty text-base leading-relaxed text-ink-soft sm:text-lg"
+        style="animation-delay: 160ms"
+      >
+        {site.site.description}
+      </p>
+
+      <div
+        class="reveal mt-8 flex flex-wrap items-center justify-center gap-3"
+        style="animation-delay: 240ms"
+      >
+        <a href={withBase('/archive')} class="btn btn-lg btn-primary">
+          <Icon name="archive" size={16} />
+          浏览全部文章
+        </a>
+        <a href={withBase('/about')} class="btn btn-lg btn-ghost">
+          <Icon name="user" size={16} />
+          关于我
+        </a>
+      </div>
+
+      <!-- 统计 -->
+      <dl
+        class="paper-plate reveal mx-auto mt-12 flex flex-wrap justify-center gap-x-10 gap-y-6"
+        style="animation-delay: 320ms"
+      >
+        {
+          stats.map((s) => (
+            <div class="flex items-center gap-3">
+              <span
+                class="grid size-10 place-items-center rounded-xl border border-line bg-surface text-brand shadow-sm"
+              >
+                <Icon name={s.icon} size={18} />
+              </span>
+              <div class="text-left">
+                <dd class="text-2xl font-bold leading-none text-ink">{s.value}</dd>
+                <dt class="mt-1 text-xs text-ink-mute">{s.label}</dt>
+              </div>
+            </div>
+          ))
+        }
+      </dl>
+    </div>
+  </div>
+</section>

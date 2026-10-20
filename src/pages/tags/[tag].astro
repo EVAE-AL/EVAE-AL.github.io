@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import Icon from '../../components/Icon.astro';
+import { getSortedPosts, collectTags } from '../../lib/posts';
+import { withBase } from '../../lib/site';
+
+export async function getStaticPaths() {
+  const posts = await getSortedPosts();
+  const tags = collectTags(posts);
+  return tags.map((tag) => ({
+    params: { tag: tag.name },
+    props: {
+      tag: tag.name,
+      posts: posts.filter((p) => (p.data.tags ?? []).includes(tag.name)),
+    },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout title={`#${tag}`} description={`标签「${tag}」下的全部文章`}>
+  <section class="pb-24 pt-12 sm:pt-16">
+    <div class="container-page">
+      <nav class="paper-plate mb-8 flex items-center gap-2 text-xs text-ink-mute" aria-label="面包屑">
+        <a href={withBase('/')} class="transition-colors hover:text-brand">首页</a>
+        <span class="text-line-strong">/</span>
+        <a href={withBase('/tags')} class="transition-colors hover:text-brand">标签</a>
+        <span class="text-line-strong">/</span>
+        <span class="text-ink-soft">#{tag}</span>
+      </nav>
+
+      <header class="mb-12 max-w-2xl">
+        <span class="chip chip-brand mb-4 !px-3 !py-1.5 !text-[0.8rem]">
+          <Icon name="tag" size={14} />
+          标签
+        </span>
+        <!-- 底放在 h1 上、渐层放内层 span：.text-gradient 的 background-clip:text
+             会把同一元素上的所有背景一起裁进字形，放同层会把底裁没。 -->
+        <h1 class="paper-plate text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+          <span class="text-gradient">#{tag}</span>
+        </h1>
+        <p class="paper-plate mt-4 text-base leading-relaxed text-ink-soft">
+          共 {posts.length} 篇相关文章。
+        </p>
+      </header>
+
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          posts.map((post, i) => (
+            <div class="reveal h-full" style={`animation-delay: ${Math.min(i * 70, 490)}ms`}>
+              <PostCard post={post} index={i} />
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="mt-14 flex justify-center gap-3">
+        <a href={withBase('/tags')} class="btn btn-ghost">
+          <Icon name="arrow-left" size={15} />
+          全部标签
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

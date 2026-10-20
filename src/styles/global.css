@@ -1,0 +1,1007 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   设计系统 —— 水墨风
+   墨分五色（焦 · 浓 · 重 · 淡 · 清）+ 朱红印章点睛
+   想换配色只改这里的变量
+   ============================================================ */
+
+@theme {
+  /* UI 元素用无衬线，标题与正文用宋体（见 body） */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-serif: 'Songti SC', 'Source Han Serif SC', 'Noto Serif SC', 'STSong',
+    'SimSun', 'Songti TC', 'Source Han Serif', serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+
+  /* 墨色阶：由宣纸白到焦墨（暖灰，非冷灰） */
+  --color-brand-50: #faf8f4;
+  --color-brand-100: #f2eee7;
+  --color-brand-200: #e3ddd2;
+  --color-brand-300: #c8c0b2;
+  --color-brand-400: #9a9186;
+  --color-brand-500: #6b6259;
+  --color-brand-600: #4a443d;
+  --color-brand-700: #332e29;
+  --color-brand-800: #211d1a;
+  --color-brand-900: #14110f;
+
+  /* 朱红：印泥色，全站唯一的彩色点缀 */
+  --color-seal-300: #d98b7f;
+  --color-seal-400: #c2624f;
+  --color-seal-500: #a8322a;
+  --color-seal-600: #8c2620;
+  --color-seal-700: #701d18;
+}
+
+/* ---------- 语义化颜色变量：亮色（宣纸） ---------- */
+:root {
+  --bg: #f7f4ed; /* 宣纸底 */
+  --bg-soft: #f1ece2;
+  --surface: #fdfbf7; /* 卡片：比纸略亮 */
+  --surface-2: #f5f1e9;
+  --border: #ddd5c8; /* 淡墨线 */
+  --border-strong: #c4b9a8;
+  --text: #1c1917; /* 焦墨 */
+  --text-soft: #4a443d; /* 重墨 */
+  --text-mute: #736a62; /* 淡墨（再浅就低于 WCAG AA 的 4.5:1 了） */
+  --brand: var(--color-brand-600);
+  --brand-soft: #efe9de;
+  --brand-text: var(--color-seal-600); /* 链接与强调：朱红，如朱笔批注 */
+  --seal: var(--color-seal-500);
+  --seal-soft: #f6e9e5;
+  --paper: rgb(28 25 23 / 0.05); /* 纸纹与墨晕浓度 */
+  /* 长文正文的半透明宣纸底浓度。背景视频透出来的比例 = 100% - 该值。
+     调低 = 视频更明显、文字更吃力；调高 = 更接近实底。
+     亮暗两个主题共用同一个值（它只是透明度，不需要分主题）。 */
+  --panel-alpha: 86%;
+
+  /* 环形画廊外层大面板的浓度，与长文的 --panel-alpha 分开。
+     为什么分开：长文面板要考虑正文可读性，画廊面板只是给卡片当底，
+     两者诉求不同，混用一个值会导致「调了画廊、文章页跟着变」。
+     调低 = 背景视频透出来更多、面板更淡。 */
+  --gallery-panel-alpha: 68%;
+
+  /* ---------- 玻璃卡参数（只影响卡片，背景视频一个像素都不动） ----------
+     这些值不是随手调的，是按「视频最坏像素」反解出来的：
+       视频平均亮度仅 14.2%，80.7% 的像素在暗部。
+       所以浅色卡必须【提亮】背景（brightness > 1），
+       并且必须靠 contrast(<1) 把纯黑抬起来（brightness 是乘法，0 × b 恒为 0）。
+     卡片内的文字色也比全站值加深了一档，用来补偿透明度带来的对比度损失。 */
+  --card-tint: #fdfbf7;
+  --card-alpha: 55%;
+  --card-blur: 24px;
+  --card-bright: 1.6;
+  --card-sat: 2.6;
+  --card-contrast: 0.7;
+  --card-ink: #1c1917;
+  --card-ink-soft: #2b2620;
+  --card-ink-mute: #3b342d;
+  --card-link: #6b1a14;
+  --shadow-sm: 0 1px 2px rgb(28 25 23 / 0.06);
+  --shadow-md: 0 4px 14px -4px rgb(28 25 23 / 0.1);
+  --shadow-lg: 0 16px 36px -18px rgb(28 25 23 / 0.22);
+  --shadow-glow: 0 0 0 1px rgb(28 25 23 / 0.1), 0 10px 26px -12px rgb(28 25 23 / 0.22);
+}
+
+/* ---------- 语义化颜色变量：暗色（夜墨） ---------- */
+html.dark {
+  --bg: #14110f;
+  --bg-soft: #1a1714;
+  --surface: #1f1c19;
+  --surface-2: #262220;
+  --border: #35302b;
+  --border-strong: #4a443d;
+  --text: #ebe6dd; /* 宣纸白 */
+  --text-soft: #b8b0a4;
+  --text-mute: #8a8078;
+  --brand: var(--color-brand-300);
+  --brand-soft: #262220;
+  --brand-text: var(--color-seal-300);
+  --seal: var(--color-seal-400);
+  --seal-soft: #2e1c18;
+  --paper: rgb(235 230 221 / 0.04);
+  /* 夜墨玻璃卡：用户选定的「方案 D」——不用 backdrop-filter，只靠半透明压暗。
+     背景视频里有很亮的像素（实测最亮 L=0.86，接近纯白），
+     不加滤镜时靠 78% 的不透明墨色底把亮部压下去，文字改用提亮一档的色阶。
+
+     为什么不用滤镜：contrast(<1) 的公式 out=(in-0.5)*c+0.5 会把纯黑【抬到中灰】
+     （c=0.65 时纯黑→0.24）。浅色卡需要「提亮黑」，深色卡需要「压暗」，方向相反。
+     与其配一套反向滤镜，不如干脆不要滤镜——更省性能，行为也更可预测。 */
+  --card-tint: #1f1c19;
+  --card-alpha: 78%;
+  --card-blur: 0px;
+  --card-bright: 1;
+  --card-sat: 1;
+  --card-contrast: 1;
+  --card-ink: #faf7f2;
+  --card-ink-soft: #f0ece4;
+  --card-ink-mute: #e4ded2;
+  --card-link: #f5c9ba;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 14px -4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 16px 36px -18px rgb(0 0 0 / 0.75);
+  --shadow-glow: 0 0 0 1px rgb(235 230 221 / 0.12), 0 10px 26px -12px rgb(0 0 0 / 0.6);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-soft: var(--bg-soft);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-ink-soft: var(--text-soft);
+  --color-ink-mute: var(--text-mute);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-text: var(--brand-text);
+  --color-seal: var(--seal);
+  --color-seal-soft: var(--seal-soft);
+}
+
+/* ============================================================
+   基础样式
+   ============================================================ */
+
+/* 默认边框色。
+   ⚠️ 必须放在 @layer base 里，不能裸露在外。
+   未分层的样式在层叠中【优先于所有 layered 样式】（cascade layers 规则），
+   所以裸露的 `* { border-color }` 会压掉 @layer utilities 里的 .border-transparent
+   以及 @layer components 里 .card / .chip / .paper-panel 写的半透明边框，
+   把它们全部变成不透明的 var(--border)。
+   实测症状：头部 `border-b border-transparent` 计算出的
+   border-bottom-color 是 rgb(221,213,200)（= --border），
+   于是每个页面顶部都有一条横贯全屏的 1px 实线。
+   放进 base 层后，默认值依然生效，但工具类与组件规则能正常覆盖它。 */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* 页面底色置空，让背景视频层（z-index:-2）直接透出来。
+     注意：body 的底色本来也不会挡住视频——html 没有背景时，body 的
+     background-color 会传播成「画布背景」画在最底层，仍在视频之下。
+     置空是为了让底色只有一个来源（.bg-video 自带的 var(--bg) 兜底），
+     避免两层底色互相干扰。 */
+  background-color: transparent;
+  color: var(--text);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 墨晕：模拟墨在水中扩散，替代原来的彩色光晕 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58rem 30rem at 10% -10%, var(--paper), transparent 62%),
+    radial-gradient(46rem 26rem at 94% 2%, var(--paper), transparent 64%),
+    radial-gradient(40rem 22rem at 52% 106%, var(--paper), transparent 66%);
+}
+
+/* 宣纸纹理：SVG 噪点。
+   必须用 soft-light——噪点均值约 50% 灰，soft-light 下不改变整体亮度，只留颗粒感。
+   换成 multiply 会把整页压暗约 25%（宣纸底直接变灰），screen 在深色下又会发灰。 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.6;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: var(--color-brand-200);
+  color: var(--color-brand-900);
+}
+
+html.dark ::selection {
+  background: var(--color-brand-800);
+  color: var(--color-brand-50);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand);
+  background-clip: content-box;
+}
+
+/* ============================================================
+   主题切换：圆形揭示（View Transitions API）
+   ============================================================
+
+   实际的扩散动画在 ThemeToggle.astro 里（startViewTransition + clip-path
+   从点击点扩到盖满视口）。这里只负责两件事：
+
+   1) 关掉浏览器默认的「新旧两帧交叉淡化」。不关的话，圆形揭示会同时叠上
+      一层全屏淡入淡出，圆的边缘被稀释成两层薄雾，看起来像掉帧。
+   2) 显式排出层级——旧快照在下、新快照在上。这样圆形边缘是一条干净的
+      硬边（水墨风的「擦」），而不是新旧两帧半透明地混在一起。
+
+   ⚠️ 这两条刻意写在 @layer 之外（未分层）：未分层样式在层叠中优先于
+   所有分层样式，将来即使有人往 @layer 里加了同名规则也不会把它压掉。
+   （本文件已经因为「未分层 > 分层」踩过两次坑，见 HANDOVER.md。）
+   ============================================================ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* ============================================================
+   复用组件类
+   ============================================================ */
+
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  /* 玻璃宣纸卡：让背景视频的鲜亮透进来。
+     只改卡片自身——背景视频层（.bg-video）完全不动，没有滤镜也没有蒙层。
+     backdrop-filter 只对「卡片背后的像素」生效，所以视频本身原样保留。
+
+     为什么是这几个滤镜（不是随便凑的）：
+       blur      把视频的碎细节糊开，卡面才读得清字，同时保住大色块
+       brightness 浅色主题 >1 提亮（视频太暗，不提亮透出来只是灰闷）
+                  深色主题 <1 压暗（视频亮部接近纯白，不压会冲掉浅色字）
+       saturate  把提亮后变淡的颜色补回来，这是「鲜亮」的来源
+       contrast  <1 抬黑。brightness 是乘法，纯黑永远抬不起来；
+                 contrast 的 out=(in-0.5)*c+0.5 才能把纯黑变成 (1-c)/2。
+                 视频 80.7% 像素在暗部，这一步直接决定文字能否达标。
+
+     文字层级：卡片内不用全站的 --text-soft / --text-mute，
+     改用加深一档的 --card-ink-*，补偿半透明带来的对比度损失。
+     实测（.probe-frames/final-cands.txt）最坏背景下：
+       标题 6.99:1  描述 5.99:1  元信息 4.90:1  链接 4.71:1   全部 >= 4.5:1 */
+  .card {
+    position: relative;
+    background-color: color-mix(in srgb, var(--card-tint) var(--card-alpha), transparent);
+    /* 前缀必须写在前面、无前缀写在后面。
+       反过来写（无前缀在前）会被 Lightning CSS 去重时丢掉无前缀那条，
+       Firefox 就没有玻璃效果了。这是构建后核对 CSS 才发现的。 */
+    -webkit-backdrop-filter: blur(var(--card-blur)) brightness(var(--card-bright))
+      saturate(var(--card-sat)) contrast(var(--card-contrast));
+    backdrop-filter: blur(var(--card-blur)) brightness(var(--card-bright))
+      saturate(var(--card-sat)) contrast(var(--card-contrast));
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-sm);
+    color: var(--card-ink);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* 卡片内的文字层级：比全站值加深一档。
+
+     这里必须「重定义变量」，而不是去覆盖 color —— 这是个踩过的坑：
+     Tailwind 4 用原生级联层（@layer theme, base, components, utilities），
+     utilities 排在 components 之后，而级联层永远压过特异性。
+     所以 `:where(.card) :where(.text-ink-soft){color:...}` 无论怎么写都无效，
+     连 `:where(.card) .text-ink-soft`（同特异性）也照样输给 utilities 层。
+     实测证据：浏览器里卡片文字的计算色一直是全站的 #4a443d / #736a62。
+
+     改成在 .card 作用域内重定义 --text / --text-soft / --text-mute / --brand-text，
+     工具类里的 var(--text-soft) 会自然解析成卡片值，完全不跟级联对抗。 */
+  .card {
+    --text: var(--card-ink);
+    --text-soft: var(--card-ink-soft);
+    --text-mute: var(--card-ink-mute);
+    --brand-text: var(--card-link);
+  }
+
+  /* 需要实底的场合（如卡片内嵌的代码块、图片衬底）用它覆盖 */
+  .card-solid {
+    background-color: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* 深色主题（方案 D）刻意不使用 backdrop-filter：只保留半透明墨色底。
+     单独立一条规则而不是把 --card-filter 设成 none，
+     是为了避免 Lightning CSS 把两条取值相同的 backdrop-filter 声明去重合并。
+     特异性 html.dark .card (0,1,1) > .card (0,1,0)，同层内必胜。 */
+  html.dark .card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* 半透明宣纸面板：长文阅读区专用。
+     背景视频保持全透明（Hero 等区域通透），只有正文所在区域压一层纸，
+     兼顾「贴合背景」与「长文可读」。
+
+     这里刻意不用 backdrop-filter：面板很高，而背后是持续播放的视频，
+     大面积实时模糊需要每帧重算，长文页容易掉帧。半透明底已经够用了。 */
+  .paper-panel {
+    position: relative;
+    background-color: color-mix(in srgb, var(--surface) var(--panel-alpha), transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-glow);
+    border-color: color-mix(in srgb, var(--brand) 50%, var(--border));
+  }
+
+  /* 墨色渐层文字：焦墨 → 重墨，克制的层次感 */
+  .text-gradient {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-brand-900) 0%,
+      var(--color-brand-600) 52%,
+      var(--color-brand-800) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  html.dark .text-gradient {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-brand-50) 0%,
+      var(--color-brand-300) 52%,
+      var(--color-brand-100) 100%
+    );
+  }
+
+  /* 悬停时浮现「墨 → 朱」的渐变描边 */
+  .card-gradient-border {
+    position: relative;
+    border-radius: 0.5rem;
+    isolation: isolate;
+  }
+  .card-gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, var(--brand), var(--seal), transparent 75%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .card-gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  /* 标签：小方角，无衬线（UI 用字） */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.62rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-soft);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+
+  .chip:hover {
+    color: var(--brand-text);
+    border-color: color-mix(in srgb, var(--brand) 50%, var(--border));
+    background: var(--brand-soft);
+  }
+
+  .chip-brand {
+    background: var(--brand-soft);
+    color: var(--brand-text);
+    border-color: color-mix(in srgb, var(--brand) 30%, transparent);
+  }
+
+  /* 卡片内的标签：改成半透明。
+     否则实底的 --surface-2 会在玻璃卡上贴出一块块实色补丁，
+     卡片「透出背景」的整体感就断了。
+
+     注意这里用 .card .chip（0,2,0）而不是 :where()：
+     :where() 是 0 特异性，会输给上面的 .chip（0,1,0），改了等于没改。 */
+  .card .chip {
+    background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+    border-color: color-mix(in srgb, var(--border) 55%, transparent);
+    color: var(--card-ink-soft);
+  }
+  .card .chip:hover {
+    background: color-mix(in srgb, var(--brand-soft) 75%, transparent);
+    color: var(--card-link);
+  }
+  .card .chip-brand {
+    background: color-mix(in srgb, var(--brand-soft) 75%, transparent);
+    color: var(--card-link);
+    border-color: color-mix(in srgb, var(--brand) 35%, transparent);
+  }
+
+  /* 按钮：小方角，无衬线。
+     .btn 本身即【中号】默认值，所以原来那些只写 .btn 的地方行为不变。 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.375rem;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+
+  /* ---------- 按钮三档：小 / 中 / 大 ----------
+
+     圆角按【高度比例】缩放，而不是三档都用同一个值：
+       .btn.btn-sm        ≈28px 高 · 4px   → 比值 0.143
+       .btn / .btn.btn-md ≈40px 高 · 6px   → 比值 0.15   ← 默认
+       .btn.btn-lg        ≈50px 高 · 8px   → 比值 0.16
+
+     人眼读的是「圆角占高度的比例」，不是像素值。若三档都写 6px，
+     小按钮会显得更圆、大按钮显得更方 —— 同一个东西在不同尺寸下变成两种性格。
+     这三个值都复用系统里已有的 token（0.25 / 0.375 / 0.5rem），没有发明新数字；
+     大号的 0.5rem 正好等于卡片圆角，最大的行动按钮与卡片共享同一套语言。
+
+     特异性写成 .btn.btn-* (0,2,0) 而不是 .btn-* (0,1,0)：
+     这样不依赖源码顺序，避免再出现「.border-line 与 .border-transparent 谁在后面谁赢」那类问题。 */
+  .btn.btn-sm {
+    padding: 0.32rem 0.85rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+  }
+  .btn.btn-md {
+    padding: 0.6rem 1.25rem;
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+  }
+  .btn.btn-lg {
+    padding: 0.8rem 1.6rem;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+  }
+
+  /* 筛选按钮：小号按钮 + 可选中状态。
+     以前它借 .chip 的样式，再用 `!px-3.5 !py-1.5 !text-[0.8rem]` 硬改尺寸 ——
+     那正是「没有尺寸体系」逼出来的补丁，现在收进小号按钮，内联覆盖全部删掉。
+     .chip 从此只做【不可点的标签】。
+
+     ⚠️ 浓度必须接近不透明，不能像 .card .chip 那样用半透明。
+     这些按钮【不在卡片里】，直接压在播放中的视频上，而视频平均亮度只有 34%、
+     大部分是暗部。实测：55% 半透明时，暗部上文字对比度只有约 3.1:1（低于 AA 4.5:1）；
+     提到 92% 后约 7.3:1。原来的 .chip 用的是完全不透明的 --surface-2，
+     我第一版误用了 55%，属于把可读性改坏了。 */
+  .btn.filter-btn {
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+    color: var(--text-soft);
+    font-weight: 500;
+  }
+  .btn.filter-btn:hover {
+    border-color: color-mix(in srgb, var(--brand) 45%, transparent);
+    color: var(--brand-text);
+  }
+  .btn.filter-btn.is-active {
+    background: color-mix(in srgb, var(--brand-soft) 92%, transparent);
+    border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+    color: var(--brand-text);
+  }
+
+  /* 筛选器工具栏：把「分类」「标签」两行放进一个面板。
+     必须有这层底：行首的小标题是纯文字，直接压在视频上时，
+     暗部的对比度只有约 3:1（上一轮筛选按钮踩过同样的坑）。
+     面板本身用 90% --surface-2，小标题用 --text-soft，
+     在面板上约 6.9:1，达标。 */
+  .filter-panel {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: color-mix(in srgb, var(--surface-2) 90%, transparent);
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  /* 行首小标题：刻意做成「无底、无边框的纯文字」，
+     与旁边带底带框的按钮区分开，一眼能看出这是组名而不是可点的项。 */
+  .filter-label {
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    min-width: 2.2em;
+  }
+
+  /* 主按钮：浓墨渐变，暗色下反转为宣纸色 */
+  .btn-primary {
+    background: linear-gradient(120deg, var(--color-brand-700), var(--color-brand-900));
+    color: var(--color-brand-50);
+    box-shadow: 0 8px 20px -10px rgb(28 25 23 / 0.55);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -12px rgb(28 25 23 / 0.65);
+  }
+
+  html.dark .btn-primary {
+    background: linear-gradient(120deg, var(--color-brand-100), var(--color-brand-300));
+    color: var(--color-brand-900);
+    box-shadow: 0 8px 20px -10px rgb(0 0 0 / 0.6);
+  }
+  html.dark .btn-primary:hover {
+    box-shadow: 0 14px 28px -12px rgb(0 0 0 / 0.7);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--border-strong);
+    color: var(--text-soft);
+    background: var(--surface);
+  }
+  .btn-ghost:hover {
+    color: var(--brand-text);
+    border-color: var(--brand);
+    background: var(--brand-soft);
+  }
+
+  /* 卡片内的幽灵按钮同样改成半透明，避免实色补丁。
+     同样必须用 .card .btn-ghost，:where() 会输给 .btn-ghost。 */
+  .card .btn-ghost {
+    background: color-mix(in srgb, var(--surface) 45%, transparent);
+    color: var(--card-ink-soft);
+  }
+  .card .btn-ghost:hover {
+    background: color-mix(in srgb, var(--brand-soft) 75%, transparent);
+    color: var(--card-link);
+  }
+
+  /* ---------- Hero 文字 ----------
+     Hero 整块文字都是深墨色（焦墨标题、重墨描述、淡墨统计），
+     而背景视频里有大面积深色（拱桥、废墟），实测焦墨压在视频最暗处只有 1.02:1。
+
+     为什么不做【全局蒙层】：要让最难的那行描述达到 4.5:1，纸色覆盖率需要约 70%，
+     视频只剩 30% 可见，鲜亮度基本没了。
+     为什么也不做【一整块局部底】：试过，那是一块 896×508 的矩形，
+     视觉上就是贴了一张大卡片，用户反馈「太大」。
+     最终方案：每行/每块文字各自一块紧贴字形的底 —— 见 .paper-plate。 */
+  .hero-content {
+    /* 与 .card 完全相同的处理：底一旦变成半透明，为完整纸面校准的文字色阶就不够了。
+       实测：统计标签用的 --text-mute(#736a62) 在 62% 纸底上只有约 2.8:1，
+       而它在完整纸底上是 4.82:1 —— 差值全被半透明吃掉了。
+       （.paper-plate 也会设这套色阶；这里保留是为了覆盖 Hero 里不在底内的元素。） */
+    --text: var(--card-ink);
+    --text-soft: var(--card-ink-soft);
+    --text-mute: var(--card-ink-mute);
+  }
+
+  /* ---------- 纸色小底 .paper-plate / .paper-row ----------
+
+     背景视频里深浅变化极大（最亮接近纯白、最暗接近纯黑），
+     任何单一文字色都无法在两端都达标，所以裸露在视频上的文字必须自带一层底。
+
+     浓度 62% 是实测下限：视频最暗处 62% 时最低项（淡墨元信息）4.75:1 达标，
+     降到 56% 就掉到 4.05:1。圆角统一 0.5rem，与
+     .card / .btn-lg / .filter-panel 一致。
+
+     同时重定义文字色阶：底一旦半透明，为完整纸面校准的 --text-mute(#736a62)
+     在 62% 底上只有约 2.8:1（它在完整纸底上是 4.82:1）。
+     换成卡片那套加深一档的色阶（--card-ink-*），与 .card 的处理完全一致。
+     深色主题下 --card-ink-* 自动是浅色，配深色底同样成立。 */
+  .paper-plate,
+  .paper-row {
+    /* 浓度 58%：用户要求「比卡片淡一点、但比卡片深一点」。
+       卡片是 --card-alpha 55%，所以底取 58% —— 落在 (55%, 62%) 区间内。
+       注意不能降太多：实测 56% 时最小号文字就掉到 4.05:1 不达标。 */
+    background-color: color-mix(in srgb, var(--bg) 58%, transparent);
+    --text: var(--card-ink);
+    --text-soft: var(--card-ink-soft);
+    /* 底从 62% 降到 58%，最小号的元信息（12px，如日期、统计标签）在视频最暗处
+       会掉到约 4.3:1 不达标。把这一档再深一步补偿回来：
+       用已有的 --color-brand-700(#332e29) 代替 --card-ink-mute(#3b342d)，
+       实测回到 4.70:1。层级仍然保留（soft 比 mute 更深）。 */
+    --text-mute: var(--color-brand-700);
+  }
+
+  /* 紧贴文字、宽度自适应。
+     刻意【不设】margin-inline：居中与否交给调用方
+     —— Hero 是居中的（加 mx-auto），其它页面页头是左对齐的（不加）。 */
+  .paper-plate {
+    width: fit-content;
+    padding: 0.06em 0.34em;
+    border-radius: 0.5rem;
+  }
+
+  /* 列表行用：铺满整行，只加底，padding 与圆角沿用行自己的（如 archive 的 px-4 py-3.5 rounded-xl） */
+  .paper-row {
+    border-radius: 0.5rem;
+  }
+
+  /* 分隔线渐变 */
+  .divider-gradient {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  }
+
+  /* 朱红印章：全站的点睛色块 */
+  .seal-stamp {
+    display: grid;
+    place-items: center;
+    width: 4.25rem;
+    height: 4.25rem;
+    background: var(--seal);
+    color: #fdfbf7;
+    font-family: var(--font-serif);
+    font-size: 1.9rem;
+    font-weight: 700;
+    line-height: 1;
+    border-radius: 0.375rem;
+    box-shadow: 0 6px 20px -8px rgb(168 50 42 / 0.55);
+    transform: rotate(-4deg);
+    opacity: 0.94;
+    user-select: none;
+  }
+
+  /* 小号印章，用于卡片角落 */
+  .seal-stamp-sm {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 1.05rem;
+    transform: rotate(-3deg);
+  }
+}
+
+/* ============================================================
+   正文排版 .prose-custom
+   ============================================================ */
+
+.prose-custom {
+  /* 宋体在屏幕上偏细，靠放大字号与行距补可读性 */
+  font-size: 1.125rem;
+  line-height: 1.95;
+  letter-spacing: 0.01em;
+  color: var(--text-soft);
+  word-wrap: break-word;
+}
+
+.prose-custom > *:first-child {
+  margin-top: 0;
+}
+
+.prose-custom h2,
+.prose-custom h3,
+.prose-custom h4 {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  scroll-margin-top: 6rem;
+  position: relative;
+}
+
+.prose-custom h2 {
+  font-size: 1.5rem;
+  margin-top: 2.75rem;
+  margin-bottom: 1rem;
+  padding-left: 0.85rem;
+  border-left: 4px solid var(--brand);
+  border-radius: 2px;
+}
+
+.prose-custom h3 {
+  font-size: 1.2rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-custom h4 {
+  font-size: 1.05rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-custom p {
+  margin-block: 1.15rem;
+}
+
+.prose-custom a {
+  color: var(--brand-text);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  transition: all 0.2s ease;
+}
+
+.prose-custom a:hover {
+  color: var(--brand);
+  border-bottom-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.prose-custom strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.prose-custom ul,
+.prose-custom ol {
+  margin-block: 1.15rem;
+  padding-left: 1.5rem;
+}
+
+.prose-custom ul {
+  list-style: none;
+}
+.prose-custom ul > li {
+  position: relative;
+  padding-left: 0.35rem;
+  margin-block: 0.5rem;
+}
+.prose-custom ul > li::before {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0.7em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--seal); /* 朱点，如朱笔圈点 */
+}
+
+.prose-custom ol {
+  list-style: decimal;
+}
+.prose-custom ol > li {
+  margin-block: 0.5rem;
+  padding-left: 0.25rem;
+}
+.prose-custom ol > li::marker {
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.prose-custom blockquote {
+  margin-block: 1.5rem;
+  padding: 0.9rem 1.25rem;
+  border-left: 4px solid var(--brand);
+  border-radius: 0 0.75rem 0.75rem 0;
+  background: var(--brand-soft);
+  color: var(--text-soft);
+  font-style: normal;
+}
+.prose-custom blockquote p {
+  margin-block: 0.4rem;
+}
+
+/* 行内代码 */
+.prose-custom code:not(pre code) {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  padding: 0.15em 0.45em;
+  border-radius: 0.375rem;
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  font-weight: 500;
+}
+
+/* 代码块 */
+.prose-custom pre {
+  margin-block: 1.5rem;
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.875rem;
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  box-shadow: var(--shadow-sm);
+}
+
+.prose-custom pre code {
+  font-family: var(--font-mono);
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* 代码块跟随主题：浅色统一到面板底色（Shiki 会写入内联背景色，需 !important 覆盖） */
+.prose-custom pre.astro-code {
+  background-color: var(--surface-2) !important;
+}
+
+/* Shiki 双主题：暗色模式下切换到 --shiki-dark* 变量，否则代码块始终是亮色 */
+html.dark .prose-custom pre.astro-code,
+html.dark .prose-custom pre.astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
+}
+
+/* 图片 */
+.prose-custom img {
+  border-radius: 0.875rem;
+  border: 1px solid var(--border);
+  margin-block: 1.75rem;
+  box-shadow: var(--shadow-md);
+}
+
+/* 表格 */
+.prose-custom table {
+  width: 100%;
+  margin-block: 1.75rem;
+  border-collapse: collapse;
+  font-size: 0.925rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  display: block;
+  overflow-x: auto;
+}
+
+.prose-custom thead {
+  background: var(--surface-2);
+}
+
+.prose-custom th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.prose-custom td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.prose-custom tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prose-custom tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.prose-custom hr {
+  margin-block: 2.5rem;
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+}
+
+/* ============================================================
+   动画
+   ============================================================ */
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) }
+  50% { transform: translateY(-12px) }
+}
+
+@keyframes gradient-pan {
+  0% { background-position: 0% 50% }
+  50% { background-position: 100% 50% }
+  100% { background-position: 0% 50% }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+
+.animate-float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+.animate-gradient-pan {
+  background-size: 200% 200%;
+  animation: gradient-pan 8s ease infinite;
+}
+
+/* 入场动画：未启用 JS 时内容依然可见 */
+.reveal {
+  opacity: 1;
+}
+
+html.js-reveal .reveal {
+  opacity: 0;
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  html.js-reveal .reveal {
+    opacity: 1;
+  }
+}
+
+/* 隐藏锚点链接的视觉噪音 */
+.anchor-link {
+  opacity: 0;
+  margin-left: 0.4rem;
+  color: var(--brand);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+h2:hover .anchor-link,
+h3:hover .anchor-link {
+  opacity: 1;
+}

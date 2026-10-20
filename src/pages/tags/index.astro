@@ -1,0 +1,58 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getSortedPosts, collectTags } from '../../lib/posts';
+import { withBase } from '../../lib/site';
+
+const posts = await getSortedPosts();
+const tags = collectTags(posts);
+---
+
+<BaseLayout title="标签" description="按标签浏览全部文章">
+  <section class="pb-24 pt-12 sm:pt-16">
+    <div class="container-page">
+      <header class="mb-14 max-w-2xl">
+        <span class="chip chip-brand mb-4 !px-3 !py-1.5 !text-[0.8rem]">
+          <Icon name="tag" size={14} />
+          分类索引
+        </span>
+        <!-- 页头文字直接压在视频上，各自带一层紧贴的纸色底（.paper-plate）。
+             渐层文字（text-gradient）不能和底同元素：background-clip:text 会把底一起裁掉。 -->
+        <h1 class="paper-plate text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+          全部<span class="text-gradient">标签</span>
+        </h1>
+        <p class="paper-plate mt-4 text-base leading-relaxed text-ink-soft">
+          共 {tags.length} 个标签。点击任意标签查看该标签下的文章。
+        </p>
+      </header>
+
+      {
+        tags.length === 0 ? (
+          <p class="py-20 text-center text-ink-mute">还没有任何标签。</p>
+        ) : (
+          <div class="card !rounded-2xl p-8 sm:p-12">
+            <div class="flex flex-wrap items-center gap-3">
+              {tags.map((tag, i) => (
+                <a
+                  href={withBase(`/tags/${encodeURIComponent(tag.name)}/`)}
+                  class="chip reveal hover:scale-105 hover:border-brand"
+                  style={`animation-delay: ${Math.min(i * 40, 500)}ms`}
+                >
+                  #{tag.name}
+                  <span class="text-ink-mute">{tag.count}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
+      <div class="mt-12 flex justify-center">
+        <a href={withBase('/archive')} class="btn btn-ghost">
+          <Icon name="archive" size={15} />
+          按时间浏览
+        </a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

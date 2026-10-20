@@ -1,0 +1,42 @@
+# 依赖与构建产物
+node_modules/
+dist/
+.astro/
+
+# 本地调试产物：截图、分析脚本、测量报告。
+# 体量可达数百 MB（累计 482 MB / 911 个文件），绝对不能进仓库。
+# 里面是排查背景视频、对比度、布局时生成的临时素材，不是项目资产。
+.probe-frames/
+
+# 截图工作目录：里面还混着完整的 Chrome 用户配置
+# （Cache_Data / GPUCache / GrShaderCache / 图标缓存等），合计约 200 MB。
+# 源码里零引用，不是项目资产。
+.shots/
+
+# 对外投稿用的素材包（原图 / 配图 / 合成图 / zip），约 63 MB。
+# 不属于站点内容；要版本化请单独建一个素材仓库。
+投稿素材/
+
+# 本地安装缓存（受限环境下用 --cache ./.npm-cache 产生）
+.npm-cache/
+
+# 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 环境变量
+.env
+.env.production
+
+# 编辑器与系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# 临时备份目录（带时间戳的 备份_YYYYMMDD-HHMM 文件夹）。
+# 真正的回滚备份在仓库外，不进版本库。
+备份_*/

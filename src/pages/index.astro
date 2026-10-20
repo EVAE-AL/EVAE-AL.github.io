@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import PostCard from '../components/PostCard.astro';
+import PostList from '../components/PostList.astro';
+import Icon from '../components/Icon.astro';
+import { getSortedPosts, collectTags } from '../lib/posts';
+import { withBase } from '../lib/site';
+
+const posts = await getSortedPosts();
+const tags = collectTags(posts);
+
+const featured = posts.find((p) => p.data.featured) ?? posts[0];
+const rest = posts.filter((p) => p.id !== featured?.id);
+const latestYear = posts[0]?.data.pubDate.getFullYear();
+
+// 热门标签云
+// 字号统一，不再按文章数缩放：同一组标签出现两种大小会被读成「排版出错」，
+// 而不是「文章多」。文章数已经由标签里的数字直接表达了。
+const topTags = tags.slice(0, 14);
+---
+
+<BaseLayout>
+  <Hero totalPosts={posts.length} totalTags={tags.length} latestYear={latestYear} />
+
+  {
+    featured && (
+      <section class="pb-16">
+        <div class="container-page">
+          <div class="mb-6 flex items-center gap-3">
+            <span class="grid size-8 place-items-center rounded-sm bg-seal text-white">
+              <Icon name="sparkles" size={15} />
+            </span>
+            <h2 class="paper-plate text-lg font-bold tracking-tight text-ink">精选推荐</h2>
+            <span class="h-px flex-1 bg-gradient-to-r from-line to-transparent" />
+          </div>
+          <div class="reveal">
+            <PostCard post={featured} variant="featured" index={0} />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <PostList posts={rest} />
+
+  {
+    topTags.length > 0 && (
+      <section class="pb-24">
+        <div class="container-page">
+          <div class="card !rounded-2xl p-8 sm:p-10">
+            <div class="mb-6 flex items-center gap-3">
+              <span class="grid size-8 place-items-center rounded-lg border border-line bg-surface-2 text-brand">
+                <Icon name="tag" size={15} />
+              </span>
+              <h2 class="text-lg font-bold tracking-tight text-ink">标签云</h2>
+              <a
+                href={withBase('/tags')}
+                class="ml-auto inline-flex items-center gap-1 text-xs font-medium text-ink-mute transition-colors hover:text-brand"
+              >
+                全部标签
+                <Icon name="arrow-right" size={13} />
+              </a>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              {topTags.map((tag) => (
+                <a
+                  href={withBase(`/tags/${encodeURIComponent(tag.name)}/`)}
+                  class="chip hover:scale-105"
+                >
+                  #{tag.name}
+                  <span class="text-ink-mute">{tag.count}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+</BaseLayout>

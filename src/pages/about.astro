@@ -1,0 +1,151 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import PostCard from '../components/PostCard.astro';
+import site, { withBase } from '../lib/site';
+import { getSortedPosts } from '../lib/posts';
+
+const posts = await getSortedPosts();
+const recent = posts.slice(0, 3);
+
+const highlights = [
+  { icon: 'sparkles', title: '保持好奇', text: '对新鲜事物保持敏感，也愿意花时间把一件事弄明白。' },
+  { icon: 'archive', title: '长期记录', text: '相信写作是一种整理，把模糊的想法变成清晰的文字。' },
+  { icon: 'user', title: '乐于交流', text: '欢迎在任何一个渠道找到我，聊聊技术、产品或者生活。' },
+];
+---
+
+<BaseLayout title="关于" description={site.site.description}>
+  <section class="pb-24 pt-12 sm:pt-16">
+    <div class="container-page">
+      <div class="grid gap-12 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <!-- 主内容 -->
+        <div class="min-w-0">
+          <header class="mb-10">
+            <span class="chip chip-brand mb-4 !px-3 !py-1.5 !text-[0.8rem]">
+              <Icon name="user" size={14} />
+              关于
+            </span>
+            <!-- 页头文字直接压在视频上，带一层紧贴的纸色底（.paper-plate）。
+                 这里渐层文字（text-gradient）是行内的，底放在外层 h1 上就不冲突。 -->
+            <h1 class="paper-plate text-balance text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl">
+              你好，我是 <span class="text-gradient">{site.author.name}</span>
+            </h1>
+          </header>
+
+          <!-- 头像 + 简介 -->
+          <div class="card mb-10 p-7 sm:p-9">
+            <div class="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+              {
+                site.author.avatar ? (
+                  <img
+                    src={withBase(site.author.avatar)}
+                    alt={site.author.name}
+                    class="size-24 shrink-0 rounded-2xl border border-line object-cover shadow-md"
+                  />
+                ) : (
+                  <span
+                    class="grid size-24 shrink-0 place-items-center rounded-md bg-seal text-4xl font-bold text-white shadow-lg"
+                    style="font-family: var(--font-serif)"
+                  >
+                    {site.author.name.slice(0, 1).toUpperCase()}
+                  </span>
+                )
+              }
+
+              <div class="min-w-0">
+                <p class="text-xl font-bold text-ink">{site.author.name}</p>
+                <p class="mt-1 text-sm text-ink-mute">{site.site.tagline}</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                  {
+                    site.social.map((item) => (
+                      <a
+                        href={item.url}
+                        target={item.url.startsWith('http') ? '_blank' : undefined}
+                        rel={item.url.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        class="chip"
+                      >
+                        <Icon name={item.icon} size={13} />
+                        {item.name}
+                      </a>
+                    ))
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 自我介绍：长文，压一层半透明宣纸保证可读性 -->
+          <div class="paper-panel prose-custom mb-14 p-6 sm:p-9">
+            <h2>关于这个博客</h2>
+            {site.author.bio.map((line: string) => <p>{line}</p>)}
+
+            <h2>我在写什么</h2>
+            <p>
+              内容大致分成三类：<strong>技术</strong>是日常踩坑与学习笔记，
+              <strong>生活</strong>是一些片段和感受，<strong>随笔</strong>
+              则是介于两者之间的思考。没有严格的更新计划，想写的时候就写。
+            </p>
+
+            <h2>关于这个站点</h2>
+            <p>
+              本站使用 <a href="https://astro.build" target="_blank" rel="noopener noreferrer">Astro</a>
+              {' '}构建，样式由 Tailwind CSS 驱动，文章以 Markdown 编写。
+              全站静态生成，没有数据库，也没有追踪脚本。
+            </p>
+
+            <blockquote>
+              <p>把一件事写清楚，本身就是一种理解。</p>
+            </blockquote>
+
+            <h2>联系我</h2>
+            <p>
+              有任何想法或问题，欢迎通过上方任意一个渠道联系我。如果你也在写博客，很高兴认识你。
+            </p>
+          </div>
+        </div>
+
+        <!-- 侧边栏 -->
+        <aside class="space-y-6">
+          <div class="card p-6">
+            <h2 class="mb-5 text-sm font-semibold uppercase tracking-wider text-ink-mute">
+              我在意的事
+            </h2>
+            <ul class="space-y-5">
+              {
+                highlights.map((item) => (
+                  <li class="flex gap-3.5">
+                    <span class="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-surface-2 text-brand">
+                      <Icon name={item.icon} size={16} />
+                    </span>
+                    <div>
+                      <p class="text-sm font-semibold text-ink">{item.title}</p>
+                      <p class="mt-1 text-xs leading-relaxed text-ink-mute">{item.text}</p>
+                    </div>
+                  </li>
+                ))
+              }
+            </ul>
+          </div>
+
+          <div class="card p-6">
+            <h2 class="mb-4 text-sm font-semibold uppercase tracking-wider text-ink-mute">
+              最新文章
+            </h2>
+            <div class="-mx-3">
+              {recent.map((post) => <PostCard post={post} variant="compact" />)}
+            </div>
+            <div class="mt-3 divider-gradient"></div>
+            <a
+              href={withBase('/archive')}
+              class="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-brand-text transition-colors hover:text-brand"
+            >
+              查看全部
+              <Icon name="arrow-right" size={13} />
+            </a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

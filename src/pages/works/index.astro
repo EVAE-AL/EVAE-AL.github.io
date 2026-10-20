@@ -1,0 +1,256 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import InkGallery from '../../components/InkGallery.astro';
+import { getSortedProjects, collectStack, statusMeta } from '../../lib/projects';
+import { withBase } from '../../lib/site';
+
+const projects = await getSortedProjects();
+const stack = collectStack(projects);
+const years = projects
+  .map((p) => p.data.date?.getFullYear())
+  .filter((y): y is number => typeof y === 'number');
+const yearRange =
+  years.length > 0 ? `${Math.min(...years)} – ${Math.max(...years)}` : '—';
+
+// 环形画廊的数据：标题、封面首字、状态角标、跳转地址
+const galleryItems = projects.map((project) => ({
+  id: project.id,
+  title: project.data.title,
+  char: project.data.title.slice(0, 1),
+  meta: statusMeta[project.data.status].label,
+  href: withBase(`/works/${project.id}/`),
+}));
+
+// 封面墨色，四套浓淡轮换
+const gradients = [
+  'from-brand-600 via-brand-700 to-brand-900',
+  'from-brand-700 via-brand-800 to-brand-900',
+  'from-brand-500 via-brand-700 to-brand-800',
+  'from-brand-800 via-brand-900 to-brand-900',
+];
+---
+
+<BaseLayout title="作品" description="做过的一些东西：网站、工具，以及还在折腾中的想法。">
+  <section class="pb-24 pt-12 sm:pt-16">
+    <div class="container-page">
+      <!-- 页头 -->
+      <header class="mb-14 max-w-2xl">
+        <span class="chip chip-brand mb-4 !px-3 !py-1.5 !text-[0.8rem]">
+          <Icon name="sparkles" size={14} />
+          作品集
+        </span>
+        <!-- 页头文字直接压在视频上，各自带一层紧贴的纸色底（.paper-plate）。
+             渐层文字（text-gradient）不能和底同元素：background-clip:text 会把底一起裁掉。 -->
+        <h1 class="paper-plate text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+          做过的<span class="text-gradient">东西</span>
+        </h1>
+        <p class="paper-plate mt-4 text-base leading-relaxed text-ink-soft">
+          这里放一些自己做的项目——有些还在维护，有些已经停在某个版本上。
+          每个都写清楚了为什么做、做到什么程度。
+        </p>
+
+        <!-- 统计 -->
+        <dl class="paper-plate mt-8 flex flex-wrap gap-x-8 gap-y-4">
+          <div class="flex items-baseline gap-2">
+            <dd class="text-xl font-bold text-ink">{projects.length}</dd>
+            <dt class="text-xs text-ink-mute">个项目</dt>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <dd class="text-xl font-bold text-ink">{stack.length}</dd>
+            <dt class="text-xs text-ink-mute">项技术</dt>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <dd class="text-xl font-bold text-ink">{yearRange}</dd>
+            <dt class="text-xs text-ink-mute">时间跨度</dt>
+          </div>
+        </dl>
+      </header>
+
+      {/* 环形画廊：滚动 / 拖拽浏览，点击进入详情 */}
+      {
+        galleryItems.length > 0 && (
+          <div class="reveal mb-14">
+            <InkGallery
+              items={galleryItems}
+              height={600}
+              bend={0}
+              speed={2}
+              ease={0.06}
+            />
+          </div>
+        )
+      }
+
+      {
+        projects.length === 0 ? (
+          <p class="py-20 text-center text-ink-mute">
+            还没有作品。在 <code>src/content/projects/</code> 下新增 Markdown 文件即可。
+          </p>
+        ) : (
+          <div class="grid gap-6 sm:grid-cols-2">
+            {projects.map((project, i) => {
+              const { title, description, role, date, stack: tech, cover, link, repo, status } =
+                project.data;
+              const meta = statusMeta[status];
+              const gradient = gradients[i % gradients.length];
+              const href = withBase(`/works/${project.id}/`);
+
+              return (
+                // 外层负责入场动画、内层负责悬浮位移，避免 animation 的
+                // forwards 覆盖 hover 的 transform
+                <div class="reveal h-full" style={`animation-delay: ${Math.min(i * 80, 400)}ms`}>
+                  <article class="card card-hover card-gradient-border group relative flex h-full flex-col overflow-hidden !p-0">
+                    {/* 整卡可点击的覆盖层 */}
+                    <a href={href} class="absolute inset-0 z-10" aria-label={`查看作品：${title}`}>
+                      <span class="sr-only">{title}</span>
+                    </a>
+
+                    {/* 封面 / 墨色占位 */}
+                    <div
+                    class:list={[
+                      'relative min-h-[10rem] overflow-hidden bg-gradient-to-br',
+                      gradient,
+                    ]}
+                  >
+                    {cover ? (
+                      <img
+                        src={withBase(cover)}
+                        alt={title}
+                        loading="lazy"
+                        class="absolute inset-0 size-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <>
+                        <div
+                          class="absolute inset-0"
+                          style="background-image: radial-gradient(circle at 30% 26%, rgba(250,248,244,.24), transparent 52%), radial-gradient(circle at 76% 76%, rgba(250,248,244,.13), transparent 46%);"
+                        />
+                        <div class="absolute inset-0 grid place-items-center">
+                          <span
+                            class="select-none text-6xl font-bold leading-none text-white/85 transition-transform duration-500 group-hover:scale-105"
+                            style="font-family: var(--font-serif)"
+                          >
+                            {title.slice(0, 1)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+
+                    {/* 状态标记 */}
+                    <span class="absolute left-4 top-4">
+                      <span class="inline-flex items-center gap-1.5 rounded-sm bg-black/30 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                        <span class:list={['size-1.5 rounded-full', meta.dot]} />
+                        {meta.label}
+                      </span>
+                    </span>
+
+                    {project.data.featured && (
+                      <span class="absolute right-4 top-4">
+                        <span class="rounded-sm bg-seal px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          精选
+                        </span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 内容 */}
+                  <div class="flex flex-1 flex-col gap-3 p-6">
+                    <div class="flex items-baseline justify-between gap-3">
+                      <h2 class="text-lg font-bold leading-snug tracking-tight text-ink transition-colors group-hover:text-brand-text">
+                        {title}
+                      </h2>
+                      {role && (
+                        <span class="shrink-0 text-xs text-ink-mute">{role}</span>
+                      )}
+                    </div>
+
+                    {description && (
+                      <p class="flex-1 text-[0.95rem] leading-relaxed text-ink-soft">
+                        {description}
+                      </p>
+                    )}
+
+                    {tech.length > 0 && (
+                      <div class="flex flex-wrap gap-1.5 pt-1">
+                        {tech.map((item) => (
+                          <span class="chip !text-[0.7rem]">{item}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div class="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3.5">
+                      <span class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-text">
+                        查看详情
+                        <Icon
+                          name="arrow-right"
+                          size={13}
+                          class="transition-transform duration-300 group-hover:translate-x-1"
+                        />
+                      </span>
+
+                      <span class="relative z-20 flex items-center gap-1">
+                        {repo && (
+                          <a
+                            href={repo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="grid size-7 place-items-center rounded-sm text-ink-mute transition-colors hover:bg-surface-2 hover:text-brand"
+                            title="源码"
+                            aria-label={`${title} 源码`}
+                          >
+                            <Icon name="github" size={14} />
+                          </a>
+                        )}
+                        {link && (
+                          <a
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="grid size-7 place-items-center rounded-sm text-ink-mute transition-colors hover:bg-surface-2 hover:text-brand"
+                            title="在线预览"
+                            aria-label={`${title} 在线预览`}
+                          >
+                            <Icon name="link" size={14} />
+                          </a>
+                        )}
+                        {date && (
+                          <span class="ml-1 text-xs text-ink-mute">
+                            {date.getFullYear()}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  </article>
+                </div>
+              );
+            })}
+          </div>
+        )
+      }
+
+      <!-- 技术栈汇总 -->
+      {
+        stack.length > 0 && (
+          <div class="card mt-14 !rounded-2xl p-8 sm:p-10">
+            <div class="mb-6 flex items-center gap-3">
+              <span class="grid size-8 place-items-center rounded-sm border border-line bg-surface-2 text-brand">
+                <Icon name="tag" size={15} />
+              </span>
+              <h2 class="text-lg font-bold tracking-tight text-ink">用到的技术</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-2.5">
+              {stack.map((item) => (
+                <span class="chip">
+                  {item.name}
+                  <span class="text-ink-mute">{item.count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>

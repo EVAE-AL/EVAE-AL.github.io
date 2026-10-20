@@ -1,0 +1,42 @@
+---
+/**
+ * 加载遮罩的放行脚本：内联在 <head>，必须在首次绘制前决定是否显示遮罩。
+ *
+ * 三重把关，任何一条不满足都不显示：
+ *   1. 系统「减少动态效果」→ 不显示
+ *   2. 禁 JS → 脚本根本不执行，遮罩保持 display:none
+ *   3. （可选）每次会话只显示一次
+ *
+ * 另外自带兜底定时器：即使组件脚本因网络原因没能加载，
+ * 到点也会摘掉 js-loading，绝不会把页面永久锁死。
+ */
+---
+
+<script is:inline>
+  (() => {
+    /**
+     * 是否每次会话只显示一次。
+     * 改 true 可避免每次点导航都闪一遍遮罩；
+     * 但刷新后就不会再出现，调试时建议保持 false。
+     */
+    const ONCE_PER_SESSION = false;
+
+    const root = document.documentElement;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    if (ONCE_PER_SESSION) {
+      try {
+        if (sessionStorage.getItem('blog-intro-shown') === '1') return;
+        sessionStorage.setItem('blog-intro-shown', '1');
+      } catch (e) {
+        /* 隐私模式下 sessionStorage 可能不可用，照常显示 */
+      }
+    }
+
+    root.classList.add('js-loading');
+
+    // 兜底：组件脚本若没能运行，也必须放行页面
+    setTimeout(() => root.classList.remove('js-loading'), 6000);
+  })();
+</script>

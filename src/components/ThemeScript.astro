@@ -1,0 +1,67 @@
+---
+/**
+ * 主题初始化脚本：内联在 <head> 中，避免暗色模式闪烁。
+ * 优先使用用户上次选择，其次跟随系统。
+ *
+ * 这里只负责「把主题落到 DOM 上」这一件确定的事，并把切换能力挂到
+ * window.__theme 上；圆形揭示动画属于交互层，放在 ThemeToggle.astro 里。
+ * 这样拆的原因：
+ *   1) 首屏必须内联执行（等打包脚本就晚了，会闪一下白）；
+ *   2) 揭示动画只有带主题按钮的页面才需要，没必要塞进每个页面的 <head>。
+ */
+---
+
+<script is:inline>
+  (() => {
+    const STORAGE_KEY = 'blog-theme';
+    const root = document.documentElement;
+
+    /** 读取初始主题：用户显式选择优先，否则跟随系统 */
+    const readInitial = () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved === 'light' || saved === 'dark') return saved;
+      } catch (e) {
+        /* 隐私模式下 localStorage 可能不可用 */
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    const current = () => (root.classList.contains('dark') ? 'dark' : 'light');
+
+    /**
+     * 把主题应用到 DOM。
+     * persist = false 只用于首屏初始化 —— 初始化时不能写 localStorage，
+     * 否则「跟随系统」会被第一次访问时的系统偏好冻结成固定值。
+     */
+    const set = (theme, persist) => {
+      const next = theme === 'dark' ? 'dark' : 'light';
+      root.classList.toggle('dark', next === 'dark');
+      root.dataset.theme = next;
+      root.style.colorScheme = next;
+      if (persist !== false) {
+        try {
+          localStorage.setItem(STORAGE_KEY, next);
+        } catch (e) {}
+      }
+      // 画廊（WebGL）等需要跟着换配色的地方监听这个事件
+      window.dispatchEvent(new CustomEvent('theme-change', { detail: next }));
+      return next;
+    };
+
+    // ---------- 首屏初始化（不写存储，避免覆盖「跟随系统」） ----------
+    set(readInitial(), false);
+    // 启用滚动入场动画（无 JS 时默认可见）
+    root.classList.add('js-reveal');
+
+    // ---------- 对外 API ----------
+    window.__theme = {
+      current,
+      set: (theme) => set(theme),
+      toggle: () => set(current() === 'dark' ? 'light' : 'dark'),
+    };
+
+    /** 旧接口：瞬时切换（不带动画），保留给将来可能的快捷键等调用方 */
+    window.__toggleTheme = () => window.__theme.toggle();
+  })();
+</script>

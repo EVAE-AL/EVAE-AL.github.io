@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>卡片配方对比 · 背景视频未做任何处理</title>
+<style>
+  /* ===================================================================
+     这是一个【纯对比实验室】页面，不是站点的一部分。
+     目的：让眼睛在同一个视频、同一屏里，比较不同卡片配方。
+     背景视频：与站点完全相同的远程地址，scrim = 0，不加任何滤镜。
+     =================================================================== */
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg: #f7f4ed;
+    --text: #1c1917;
+    --text-soft: #4a443d;
+    --text-mute: #736a62;
+    --seal: #a8322a;
+    --border: #ddd5c8;
+    --lab-ink: #1c1917;
+  }
+  html.dark {
+    --bg: #14110f;
+    --text: #ebe6dd;
+    --text-soft: #b8b0a4;
+    --text-mute: #8a8078;
+    --seal: #c2624f;
+    --border: #35302b;
+    --lab-ink: #ebe6dd;
+  }
+
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    color: var(--text);
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 背景视频：与站点一致 ---------- */
+  .bg-video {
+    position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none;
+    background-color: var(--bg);
+  }
+  .bg-video video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) { .bg-video video { display: none; } }
+
+  /* ---------- 顶部工具条 ---------- */
+  .bar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+    padding: 12px 20px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  }
+  .bar h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .01em; }
+  .bar p { margin: 0; font-size: 12px; color: var(--text-mute); }
+  .bar button {
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
+    color: var(--text);
+  }
+  .bar button:hover { border-color: var(--seal); color: var(--seal); }
+  .spacer { flex: 1 1 auto; }
+
+  .wrap { padding: 26px 20px 80px; max-width: 1500px; margin: 0 auto; }
+
+  .group-title {
+    font-size: 13px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--seal);
+    margin: 34px 0 6px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--seal);
+    display: inline-block;
+  }
+  .group-note { font-size: 12.5px; color: var(--text-mute); margin: 0 0 18px; max-width: 90ch; line-height: 1.7; }
+
+  .grid { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+
+  .cell { display: flex; flex-direction: column; gap: 9px; }
+
+  .label { font-size: 12px; line-height: 1.65; color: var(--text); }
+  .label b { font-size: 13px; }
+  .label .params { color: var(--text-mute); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; display: block; margin-top: 2px; }
+  .verdict { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 4px; margin-left: 6px; vertical-align: 1px; }
+  .pass { background: #d8ecd8; color: #1e4d1e; }
+  .fail { background: #f6dcd8; color: #7a1f14; }
+  html.dark .pass { background: #1e3a1e; color: #a8dca8; }
+  html.dark .fail { background: #4a1d16; color: #f0b3a6; }
+
+  /* ---------- 卡片：复刻站点 .card 的真实写法 ---------- */
+  .card {
+    position: relative;
+    padding: 22px;
+    border-radius: 0.5rem;
+    background-color: color-mix(in srgb, var(--card-tint) var(--card-alpha), transparent);
+    -webkit-backdrop-filter: blur(var(--card-blur)) brightness(var(--card-bright)) saturate(var(--card-sat)) contrast(var(--card-contrast));
+    backdrop-filter: blur(var(--card-blur)) brightness(var(--card-bright)) saturate(var(--card-sat)) contrast(var(--card-contrast));
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    box-shadow: 0 1px 2px rgb(28 25 23 / 0.06);
+    color: var(--card-ink);
+    overflow: hidden;
+  }
+  .card.no-filter {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .card .rule { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--seal); }
+
+  .card .title { font-size: 17px; font-weight: 700; line-height: 1.45; margin: 0 0 8px; color: var(--card-ink); }
+  .card .meta { font-size: 12.5px; color: var(--card-ink-mute); margin: 0 0 10px; display: flex; gap: 10px; align-items: center; }
+  .card .desc { font-size: 14.5px; line-height: 1.72; color: var(--card-ink-soft); margin: 0 0 14px; }
+  .card .link { font-size: 13.5px; font-weight: 600; color: var(--card-link); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--card-link) 40%, transparent); }
+  .card .chip {
+    display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px;
+    color: var(--card-ink-soft);
+    background: color-mix(in srgb, var(--card-ink) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--card-ink) 20%, transparent);
+  }
+  .card .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    background: var(--seal); color: #fff; margin-left: 8px;
+  }
+
+  /* 每个配方只改这几个变量 */
+  .r-light-tight  { --card-tint:#fdfbf7; --card-alpha:42%; --card-blur:24px; --card-bright:1.8; --card-sat:2.8; --card-contrast:0.62; --card-ink:#151210; --card-ink-soft:#241f1a; --card-ink-mute:#332c26; --card-link:#5e1610; }
+  .r-light-mid    { --card-tint:#fdfbf7; --card-alpha:48%; --card-blur:24px; --card-bright:1.7; --card-sat:2.7; --card-contrast:0.66; --card-ink:#1a1715; --card-ink-soft:#2b2620; --card-ink-mute:#3b342d; --card-link:#6b1a14; }
+  .r-light-cur    { --card-tint:#fdfbf7; --card-alpha:55%; --card-blur:24px; --card-bright:1.6; --card-sat:2.6; --card-contrast:0.7;  --card-ink:#1c1917; --card-ink-soft:#2b2620; --card-ink-mute:#3b342d; --card-link:#6b1a14; }
+
+  .r-dark-cur     { --card-tint:#1f1c19; --card-alpha:64%; --card-blur:24px; --card-bright:0.6;  --card-sat:2.6; --card-contrast:0.65; --card-ink:#f4f0e9; --card-ink-soft:#ded8cd; --card-ink-mute:#c2b9ab; --card-link:#e5a897; }
+  .r-dark-a       { --card-tint:#1f1c19; --card-alpha:70%; --card-blur:24px; --card-bright:0.5;  --card-sat:2.6; --card-contrast:1.3;  --card-ink:#faf7f2; --card-ink-soft:#f4f0e9; --card-ink-mute:#ece7de; --card-link:#f5c9ba; }
+  .r-dark-b       { --card-tint:#1f1c19; --card-alpha:76%; --card-blur:24px; --card-bright:0.5;  --card-sat:2.6; --card-contrast:1.3;  --card-ink:#faf7f2; --card-ink-soft:#f4f0e9; --card-ink-mute:#ece7de; --card-link:#f5c9ba; }
+  .r-dark-c       { --card-tint:#1f1c19; --card-alpha:82%; --card-blur:24px; --card-bright:0.5;  --card-sat:2.6; --card-contrast:1.3;  --card-ink:#faf7f2; --card-ink-soft:#f4f0e9; --card-ink-mute:#ece7de; --card-link:#f5c9ba; }
+  .r-dark-solid   { --card-tint:#1f1c19; --card-alpha:90%; --card-blur:0px;  --card-bright:1;    --card-sat:1;   --card-contrast:1;    --card-ink:#f4f0e9; --card-ink-soft:#ded8cd; --card-ink-mute:#c2b9ab; --card-link:#e5a897; }
+  .r-dark-nofilt  { --card-tint:#1f1c19; --card-alpha:78%; --card-blur:0px;  --card-bright:1;    --card-sat:1;   --card-contrast:1;    --card-ink:#faf7f2; --card-ink-soft:#f0ece4; --card-ink-mute:#e4ded2; --card-link:#f5c9ba; }
+
+  .foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); font-size: 12.5px; color: var(--text-mute); line-height: 1.85; max-width: 100ch; }
+  .foot code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11.5px; color: var(--text-soft); }
+</style>
+</head>
+<body>
+
+<div class="bg-video">
+  <video src="https://motionsites.org/assets/prompt-media/6fb049e38e9593f9699c.mp4"
+         autoplay loop muted playsinline preload="auto" aria-hidden="true"></video>
+</div>
+
+<div class="bar">
+  <h1>卡片配方对比</h1>
+  <p>背景视频原样，scrim = 0，未加任何滤镜 —— 变的只有卡片</p>
+  <div class="spacer"></div>
+  <button id="theme">切换深色 / 浅色</button>
+</div>
+
+<div class="wrap">
+
+  <p class="group-note" style="margin-top:22px">
+    下面每一张卡片的<strong>内容完全相同</strong>，唯一差别是卡片自己的参数（透明度 / 背景滤镜 / 文字色）。
+    背景视频、视频位置、视频上的蒙层在所有配方里都是同一个值，所以两张卡之间任何视觉差异都来自卡片本身。
+    <br />「最坏对比度」是我用无头浏览器把视频逐帧固定后，对每条文字实测出来的最低值；<strong>≥4.5:1 是 WCAG AA 正文标准</strong>。
+  </p>
+
+  <!-- ============ 浅色主题 ============ -->
+  <div class="group-title">浅色主题（宣纸）</div>
+  <p class="group-note">
+    视频本身偏暗偏蓝，所以浅色卡要把背景<strong>提亮</strong>才压得住文字。透明度越低，视频越鲜亮，文字越吃力。
+    三档都通过了 AA，差别是「通透感」与「余量」。
+  </p>
+  <div class="grid">
+
+    <div class="cell">
+      <div class="label"><b>最通透</b><span class="verdict" style="background:#eee;color:#555">未实测</span>
+        <span class="params">alpha 42% · bright 1.8 · sat 2.8 · contrast 0.62</span>
+        <span class="params">比当前配方更透一档，我没测过它，先看观感</span>
+      </div>
+      <div class="card r-light-tight">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>平衡</b><span class="verdict" style="background:#eee;color:#555">未实测</span>
+        <span class="params">alpha 48% · bright 1.7 · sat 2.7 · contrast 0.66</span>
+        <span class="params">介于上下两档之间，先看观感</span>
+      </div>
+      <div class="card r-light-mid">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>当前线上配方</b><span class="verdict pass">AA 通过</span>
+        <span class="params">alpha 55% · bright 1.6 · sat 2.6 · contrast 0.7</span>
+        <span class="params">就是你现在站点上跑的那一版</span>
+      </div>
+      <div class="card r-light-cur">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ 深色主题 ============ -->
+  <div class="group-title">深色主题（夜墨）</div>
+  <p class="group-note">
+    深色卡方向相反：要把背景<strong>压暗</strong>才压得住浅色文字。下面是「当前线上」和几档更保守的方案，越往后越实、越安全、也越不透。
+    <strong>先切到深色模式再看这一组。</strong>
+  </p>
+  <div class="grid">
+
+    <div class="cell">
+      <div class="label"><b>当前线上配方</b><span class="verdict fail">最坏 2.78:1</span>
+        <span class="params">alpha 64% · bright 0.6 · sat 2.6 · contrast 0.65</span>
+        <span class="params">/works/ 页 2026 日期处最低 2.78:1，未达 AA</span>
+      </div>
+      <div class="card r-dark-cur">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>方案 A · 压暗 + 提对比 + 提亮文字</b><span class="verdict fail">最坏 3.38:1</span>
+        <span class="params">alpha 70% · bright 0.5 · sat 2.6 · contrast 1.3</span>
+        <span class="params">文字 #faf7f2 / #f4f0e9 / #ece7de</span>
+      </div>
+      <div class="card r-dark-a">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>方案 B · 再实一点</b><span class="verdict fail">最坏 4.14:1</span>
+        <span class="params">alpha 76% · bright 0.5 · sat 2.6 · contrast 1.3</span>
+        <span class="params">只剩日期一处 4.14:1，差一点点</span>
+      </div>
+      <div class="card r-dark-b">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>方案 C · 接近实底</b><span class="verdict pass">AA 通过</span>
+        <span class="params">alpha 82% · bright 0.5 · sat 2.6 · contrast 1.3</span>
+        <span class="params">除「精选」徽章外全部 ≥4.5:1</span>
+      </div>
+      <div class="card r-dark-c">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>方案 D · 不用滤镜，只靠半透明</b><span class="verdict pass">AA 通过</span>
+        <span class="params">alpha 78% · 无 backdrop-filter</span>
+        <span class="params">最稳、最省性能；代价是背景被磨得少</span>
+      </div>
+      <div class="card r-dark-nofilt no-filter">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+    <div class="cell">
+      <div class="label"><b>方案 E · 基本实底（对照组）</b><span class="verdict pass">AA 通过</span>
+        <span class="params">alpha 90% · 无滤镜</span>
+        <span class="params">用来对比「几乎不透」是什么观感</span>
+      </div>
+      <div class="card r-dark-solid no-filter">
+        <div class="rule"></div>
+        <h3 class="title">在 Hugo、Next.js 和 Astro 之间犹豫了很久</h3>
+        <p class="meta"><span>2026-02-11</span><span>·</span><span>8 分钟</span><span class="badge">精选</span></p>
+        <p class="desc">最后选了 Astro，因为它的「默认零 JavaScript」最接近我想要的静态博客。默认零 JavaScript 的站点，怎么做筛选、目录高亮和搜索？</p>
+        <span class="chip">建站</span> <a class="link" href="#">阅读全文</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <p><strong>怎么读这一页：</strong>先切到深色看第二组，再切回浅色看第一组。哪一档「背景鲜亮」和「字看得清」的平衡最顺眼，直接告诉我编号（比如「浅色用平衡、深色用 C」），我就把它写进 <code>src/styles/global.css</code>。</p>
+    <p><strong>注意测量口径：</strong>卡片上的对比度数字是在<strong>真实站点</strong>（<code>/</code> 和 <code>/works/</code>）上测的，不是在这一页测的 —— 这一页只是复刻了配方给你用眼睛比较。真实站点的卡片更大、周围还有页头页脚，所以严格数值会有出入，但排序和量级是可信的。</p>
+    <p><strong>一个必须说明的测量结论：</strong>我用无头 Chrome 在同一帧视频上做了对照实验 —— 给卡片加极端滤镜（<code>brightness(3) hue-rotate(90deg) saturate(5)</code>）和完全关闭滤镜，卡片区域像素<strong>逐像素均差 0.00</strong>；而把视频隐藏掉，同一区域差异是 <strong>25.16</strong>。这说明：卡片半透明透出视频是确实生效的，但 <code>backdrop-filter</code> 的「磨砂/调色」效果在我这个测量环境里没有体现出来。这可能是无头浏览器的合成限制，也可能是真实浏览器里的真实现象。<strong>所以这一页的终审必须用你的眼睛</strong>，尤其是上面几个方案 A–C 之间「有没有区别」。</p>
+    <p><strong>另外发现一个与本次改动无关的既有问题：</strong>「精选」徽章是白字压在朱红实底上，实测 4.07:1，低于 AA 的 4.5:1。它是实底徽章、不受卡片透明度影响，任何配方都改不动它。要修的话是单独一件事（比如把朱红加深或把字号加大到「大字」标准），等你发话。</p>
+  </div>
+
+</div>
+
+<script>
+  const root = document.documentElement;
+  document.getElementById('theme').addEventListener('click', () => {
+    root.classList.toggle('dark');
+    root.classList.toggle('light');
+  });
+</script>
+</body>
+</html>
