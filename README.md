@@ -85,10 +85,11 @@ npm run preview
 │   │   └── robots.txt.ts         # robots.txt
 │   └── styles/global.css         # ⭐ 设计系统：配色、组件类、正文排版
 ├── scripts/
-│   └── generate-og.py            # 生成分享卡片 public/og-default.jpg
+│   ├── generate-og.py            # 生成分享卡片 public/og-default.jpg
+│   └── compress-video.py         # 压缩背景视频（PyAV，保持 1080p，带 faststart）
 ├── public/
-│   ├── bg-video.mp4              # ⭐ 背景视频（7.05 MB，自托管）
-│   ├── bg-poster.jpg             # 背景视频兜底静帧（1920×1080 / 342 KB，从视频抽的 t=0 帧）
+│   ├── bg-video.mp4              # ⭐ 背景视频（486 KB，自托管，1080p / 5.04s）
+│   ├── bg-poster.jpg             # 背景视频兜底静帧（1920×1080 / 272 KB，从视频抽的 t=0 帧）
 │   ├── favicon.svg
 │   └── og-default.jpg            # 社交分享卡片
 └── .github/workflows/deploy.yml  # GitHub Pages 自动部署
@@ -229,8 +230,11 @@ repo: 'https://github.com/...'     # 源码地址（可选）
 
 ## 全屏背景视频
 
-全站背景是一段 **1920×1080 / 5.042 秒 / 7.05 MB** 的循环视频（`public/bg-video.mp4`），
+全站背景是一段 **1920×1080 / 5.042 秒 / 486 KB** 的循环视频（`public/bg-video.mp4`），
 在背景之上叠一层全透明蒙层（`scrim = 0`，即视频原样显示）。
+
+> 原始文件是 7.05 MB，已用 [`scripts/compress-video.py`](scripts/compress-video.py) 压到 **486 KB**（小 14.9 倍），
+> 分辨率保持 1080p。压缩方法、档位选择与画质实测见下方「视频压缩」。
 
 ### 为什么是自托管
 
@@ -241,7 +245,7 @@ repo: 'https://github.com/...'     # 源码地址（可选）
 
 ### 三层兜底
 
-1. **poster 静帧**（`public/bg-poster.jpg`，1920×1080 / 342 KB，由 `.probe-frames/extract-poster.mjs`
+1. **poster 静帧**（`public/bg-poster.jpg`，1920×1080 / 272 KB，由 `.probe-frames/extract-poster.mjs`
    从 `bg-video.mp4` 里抽的 t=0 帧，**不要用页面截图裁**——那样会把页面 UI 一起烧进图里，
    刷新时视频没就绪就会闪出旧 UI 残影）
    —— 视频还没下载完 / 加载失败 / 浏览器禁止自动播放时，显示真实的拱桥画面，而不是一块空白纸色
@@ -250,6 +254,7 @@ repo: 'https://github.com/...'     # 源码地址（可选）
 
 想换背景视频：直接把新文件覆盖成 `public/bg-video.mp4` 即可，**不用改代码**。
 同时重跑一次 `.probe-frames/extract-poster.mjs` 生成配套 poster，否则兜底画面会和新视频对不上。
+换完建议再跑 `scripts/compress-video.py` 压一遍。
 
 ### 组件参数
 
@@ -266,13 +271,51 @@ repo: 'https://github.com/...'     # 源码地址（可选）
 等它 `readyState >= 2` 才切换——**没真正就绪就不切换**，宁可这一轮不叠化，
 也不会出现「淡出时另一层还是空的、背景整块消失」。
 
+实测（`.probe-frames/verify-crossfade.mjs`，采样 247 点 / 11.5 秒）：
+采到 **40 个「两层同时处于中间态」** 的样本，**硬切 0 次** —— 叠化确实在工作。
+
+### 视频压缩
+
+[`scripts/compress-video.py`](scripts/compress-video.py) 用 **PyAV** 转码（不依赖 ffmpeg 命令行；
+本机系统 Python 自带 PyAV + libx264）。
+
+**关键结论：降分辨率比提高压缩率损失大得多。** 实测各档位：
+
+| 档位 | 体积 | 缩小 | PSNR（端到端） |
+| --- | --- | --- | --- |
+| 原片 | 7.05 MB | — | — |
+| 1080p crf20 | 4.18 MB | 1.7× | 40.74 dB |
+| 1080p crf28 | 1.35 MB | 5.2× | 35.38 dB |
+| **1080p crf32** | **798 KB** | **9.0×** | **32.86 dB** |
+| **1080p crf36** ← 当前 | **486 KB** | **14.9×** | **30.36 dB** |
+| 1080p crf40 | 309 KB | 23.3× | 28.01 dB |
+| 720p crf30 | 398 KB | 18.1× | **28.06 dB** ❌ |
+
+720p-crf30 和 1080p-crf32 体积只差 2 倍，画质差 **4.8 dB**——所以**保持 1080p，只动 CRF**。
+
+选 crf36 的依据：误差放大 8 倍后是**均匀的细颗粒噪声**，没有块效应、没有色带；
+平均误差 4.70/255，误差 >8 的像素占 14.0%。crf40 升到 19.3%，没必要冒险。
+
+**「背景要鲜亮」这个要求没有被压缩破坏**（实测）：
+
+| 档位 | 饱和度 | 高饱和像素占比 | 亮度 | 动态范围 |
+| --- | --- | --- | --- | --- |
+| crf32 | +0.92% | +1.78% | −0.13% | −0.43% |
+| **crf36** | **+2.10%** | **+3.74%** | **−0.09%** | **−0.82%** |
+
+饱和度反而略升（色彩量化的副作用），亮度和动态范围几乎不变。
+
+**顺带修掉一个真问题**：原片的 `moov` 在 `mdat` **之后**（非 fast-start），
+播放器必须先拿到文件尾部才能起播。压缩脚本加了 `+faststart`，`moov` 现在在文件偏移 36 字节。
+
+> 注：`movflags` 必须作为 **muxer** 选项传给 `av.open(..., options={...})`，
+> 放进 encoder 的 `options` 里是**无效的**（这个坑踩过）。
+
 ### 体积
 
-`public/bg-video.mp4` 是 **7.05 MB**，这是目前仓库里最大的文件。
-GitHub Pages 能接受，但首屏偏重；压到 720p 约 0.4 MB（需要 ffmpeg，本站未内置该步骤）。
+`public/bg-video.mp4` 现在是 **486 KB**，`dist` 总计 **1.61 MB**（压缩前是 8.26 MB）。
+首屏已经不再有体积压力。
 
-另外这个 MP4 的 `moov` 在 `mdat` **之后**（不是 fast-start），播放器要先拿到文件尾部才能起播。
-本地和 GitHub Pages 都支持 Range，所以只是多一个往返，不影响使用。
 **线上实测**：`readyState=4`、`1920×1080`、`5.042s`，媒体请求返回 `206 Partial Content`，播放正常。
 
 ---
@@ -395,8 +438,8 @@ export const footer = { copyright: 'EVIL DEMON', icp: '' };
 - [x] 已移除指向 `motionsites.org` 的 `preconnect`（视频已自托管，不再依赖第三方域名）
 - [x] `public/og-default.jpg` 已按最终站点信息重新生成
 
-> 唯一保留的取舍：`public/bg-video.mp4` 仍是 7.05 MB 原文件（首屏偏重）。
-> 压到 720p 约 0.4 MB，但需要 ffmpeg，本机未安装。
+> 背景视频已压缩：7.05 MB → **486 KB**（保持 1080p，见「视频压缩」）。
+> `dist` 总计 1.61 MB，首屏已无体积压力。
 
 ### 仓库与自动部署
 
@@ -459,12 +502,15 @@ base: '/my-blog',
 
 **待办（按需逐个添加）**
 
-- [ ] 部署前必改项（见上方「部署到 GitHub Pages」）
-- [ ] 压缩背景视频（需 ffmpeg）
 - [ ] 全文搜索（Pagefind）
 - [ ] 评论系统（Giscus）
 - [ ] 相册页
 - [ ] 多语言
+
+**已完成**
+
+- [x] 部署上线（https://evae-al.github.io/）
+- [x] 压缩背景视频（7.05 MB → 486 KB，见「视频压缩」）
 
 ---
 

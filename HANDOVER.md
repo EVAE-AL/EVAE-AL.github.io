@@ -870,15 +870,16 @@ await writeFile("D:\\video-probe\\bg.mp4", Buffer.from(await r.arrayBuffer()));
 
 **注意：`moov` 在 `mdat` 之后（不是 fast-start）**。
 播放器需要先拿到文件尾部才能起播，HTTP 支持 Range 时没问题（本地和 GitHub Pages 都支持），
-只是多一个往返。要做 faststart 需要 ffmpeg（当前未安装）。
+只是多一个往返。~~要做 faststart 需要 ffmpeg（当前未安装）~~
+**已解决（2026-10-20）**：压缩脚本带 `+faststart`，`moov` 现在在偏移 36 字节。见第十节。
 
-**体积**：`public/bg-video.mp4` 7.05 MB，`dist` 总计 8.15 MB。
-GitHub Pages 能接受，但首屏偏重；压缩到 720p CRF30 约 0.4 MB，同样需要 ffmpeg。
+**体积**：~~`public/bg-video.mp4` 7.05 MB，`dist` 总计 8.15 MB~~
+**已压缩（2026-10-20）**：`bg-video.mp4` **486 KB**，`dist` 总计 **1.61 MB**。见第十节。
 
 #### 保留的 poster 与重试（仍然有用）
 
 远程地址已不再使用，但两层兜底继续保留 —— 换设备/换网络/文件出错时仍然救场：
-- **poster**：`public/bg-poster.jpg`（1920×1080 / 342 KB，由 `.probe-frames/extract-poster.mjs`
+- **poster**：`public/bg-poster.jpg`（1920×1080 / 272 KB，由 `.probe-frames/extract-poster.mjs`
   从 `bg-video.mp4` 抽 t=0 帧，**不要再用截图裁**），视频没数据时显示真实画面而不是空白纸色
 - **自动重试**：`RETRY_DELAYS = [4000, 15000, 40000]`，只在该播却没数据时触发
 
@@ -1063,13 +1064,15 @@ html.dark .card { -webkit-backdrop-filter: none; backdrop-filter: none; }
 - 浅色主题仍使用 `backdrop-filter`，是**性能热点**（大面积视频上逐帧重算）。卡片多时要实测滚动帧率。
 - 要给某些卡片保留实底（如代码块、侧边栏），用 `.card-solid` 覆盖类。
 
-### 2. 背景视频：待用户确认交叉淡化 + 建议自托管
+### 2. 背景视频：交叉淡化已实测生效，压缩已完成
 
-- **请用户目视确认**：`fade={0.7}` 的交叉淡化是否消除了每 5.04 秒的硬跳。
-  若观感不好或想要原来的行为，把 `<BackgroundVideo>` 的 `fade` 设为 `0` 即可退回硬切。
-- **建议自托管压缩视频**（`.probe-frames/` 里没有 ffmpeg，本机无法重压）：
-  720p CRF30 约 0.43 MB，比现在小 16 倍；可一并解决「首访 6~13 秒」「CDN 限流后不供流」
-  「淡化的双份下载」三个问题。若能重压，建议把叠化直接烤进文件，就不需要双视频方案了。
+- **交叉淡化已验证**：`.probe-frames/verify-crossfade.mjs` 采样 247 点 / 11.5s，
+  采到 40 个「两层同时处于中间态」的样本、硬切 0 次 —— 叠化确实在工作。
+  若观感不好，把 `<BackgroundVideo>` 的 `fade` 设为 `0` 即可退回硬切。
+- ~~建议自托管压缩视频（本机没有 ffmpeg，无法重压）~~
+  **已解决（2026-10-20）**：PyAV 就在系统 Python 里，已压到 **486 KB**（1080p crf36，小 14.9 倍）。
+  详见第十节。注意**不要降分辨率**——实测 720p 的 PSNR 反而比 1080p-crf32 差 4.8 dB。
+  「把叠化烤进文件」这个方案现在也没必要了：486 KB 双份下载可忽略。
 
 ### 3. 「精选」徽章 4.07:1（唯一剩余的不达标项）
 
@@ -1082,7 +1085,9 @@ html.dark .card { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 ### 4. 其他遗留（用户之前未答）
 
-- **视频体积 7.05 MB → 可压到 0.43 MB**（720p CRF30，小 16 倍）。
+- ~~视频体积 7.05 MB → 可压到 0.43 MB（720p CRF30，小 16 倍）~~
+  **已做（2026-10-20）**：实际采用 **1080p crf36 = 486 KB**，不是 720p。
+  原因见第十节：降分辨率的画质损失远大于提高 CRF。
 
 ### 5. 部署前必改（✅ 2026-10-20 已全部完成）
 
@@ -1275,7 +1280,7 @@ transition.ready.then(() => document.documentElement.animate(
 **修复**：改成从 `public/bg-video.mp4` 里抽 t=0 静帧（本机没有 ffmpeg，
 用无头 Chrome 的 `<video>` + canvas `toDataURL` 抽帧）：
 - 脚本：`.probe-frames/extract-poster.mjs`（**以后换视频就重跑它，别再用截图裁**）
-- 产物：`public/bg-poster.jpg`，1920×1080 / 342 KB / JPEG q80
+- 产物：`public/bg-poster.jpg`，1920×1080 / JPEG q80（首版 342 KB；2026-10-20 从压缩后视频重抽为 272 KB）
 - 附带好处：新图是 16:9，和视频比例一致，`background-size: cover` 与
   `video` 的 `object-fit: cover` 裁切完全对齐，poster → video 的交接不再跳画面。
 
@@ -1283,5 +1288,105 @@ transition.ready.then(() => document.documentElement.animate(
 用 CDP `Network.setBlockedURLs` 把 `bg-video.mp4` 屏蔽掉 = 把「视频未就绪」那一瞬拉长成几秒，
 然后 `Page.reload` + `Page.startScreencast` 连拍，同一时间点新旧 poster 各取一张：
 `refresh-before-after.jpg`（上排旧 poster 能清楚看到幽灵 UI，下排新 poster 干净）。
+
+---
+
+## 十、背景视频压缩（2026-10-20 追加）
+
+### 结论先行
+
+| | 压缩前 | 压缩后 |
+|---|---|---|
+| `public/bg-video.mp4` | 7.05 MB | **486 KB**（小 14.9 倍） |
+| `dist` 总计 | 8.26 MB | **1.61 MB** |
+| 分辨率 | 1920×1080 | **1920×1080（未降）** |
+| `moov` 位置 | 文件末尾（非 fast-start） | **偏移 36 字节（faststart）** |
+| 首帧就绪 | 数秒 | **285 ms** |
+
+脚本：[`scripts/compress-video.py`](scripts/compress-video.py)，可重复执行，带 `--dry-run` 与 `--crf`。
+
+### 最重要的一条：**降分辨率比提高压缩率损失大得多**
+
+这条推翻了我自己之前的建议（曾推荐 720p CRF30 ≈ 0.43 MB）。实测各档位（端到端 PSNR）：
+
+| 档位 | 体积 | 缩小 | PSNR |
+|---|---|---|---|
+| 原片 | 7.05 MB | — | — |
+| 1080p crf20 | 4.18 MB | 1.7× | 40.74 dB |
+| 1080p crf24 | 2.39 MB | 2.9× | 38.20 dB |
+| 1080p crf28 | 1.35 MB | 5.2× | 35.38 dB |
+| 1080p crf32 | 798 KB | 9.0× | 32.86 dB |
+| **1080p crf36** ← 采用 | **486 KB** | **14.9×** | **30.36 dB** |
+| 1080p crf40 | 309 KB | 23.3× | 28.01 dB |
+| 720p crf24 | 896 KB | 8.1× | 29.24 dB |
+| 720p crf30 | 398 KB | 18.1× | 28.06 dB |
+| 1440×810 crf26 | 850 KB | 8.5× | 29.94 dB |
+| 1440×810 crf30 | 500 KB | 14.4× | 28.94 dB |
+
+**720p-crf30 与 1080p-crf32 体积只差 2 倍，PSNR 差 4.8 dB。**
+降分辨率是不可逆的信息损失，提高 CRF 只是量化更狠——在 1080p 下量化到 crf36 仍然保留高频细节。
+**所以规则是：保持原生分辨率，只调 CRF。**
+
+### 为什么选 crf36
+
+误差放大 8 倍观察（`.probe-frames/quality-diff.png`）：crf36 的误差是**均匀的细颗粒噪声**，
+散布在藤蔓叶片与石头纹理上，**没有块效应、没有色带**。
+最难看的那种压缩痕迹（平坦区域出现方块、天空出现色带）**没有出现**。
+
+| 档位 | 平均误差 | 误差>8 像素占比 |
+|---|---|---|
+| crf32 | 3.60/255 | 9.2% |
+| **crf36** | **4.70/255** | **14.0%** |
+| crf40 | 6.03/255 | 19.3% |
+
+crf40 的误差占比升到 19.3%，虽然整屏仍看不出，但没必要冒险。
+
+### 「背景要鲜亮」没有被压缩破坏（实测）
+
+这是用户的既有硬要求，所以单独量了饱和度与动态范围：
+
+| 档位 | 饱和度 | 高饱和像素占比 | 亮度 | 动态范围 |
+|---|---|---|---|---|
+| crf32 | +0.92% | +1.78% | −0.13% | −0.43% |
+| **crf36** | **+2.10%** | **+3.74%** | **−0.09%** | **−0.82%** |
+
+**饱和度反而略升**（色度量化的副作用），亮度和动态范围几乎不变。
+
+### 踩到的坑
+
+1. **`movflags` 必须作为 muxer 选项传**：
+   `av.open(out, 'w', options={'movflags': '+faststart'})` 有效；
+   放进 encoder 的 `ovs.options` 里**完全无效**（第一次这么写，moov 仍在末尾）。
+2. **PyAV 就在本机**：系统 Python313 已装 PyAV 18.1.0（libav 8.1.2，带 libx264/libx265/libvpx-vp9）。
+   我一开始只查了 PATH 里有没有 `ffmpeg.exe`，得出「需要装 ffmpeg」的错误结论——
+   **查工具链要查全，别只看 PATH。**
+3. **对比页不能用 `data:` URL**：data URL 的 origin 是不透明的，`<video src>` 的媒体请求发不出去，
+   会误报 `error.code = 4`。必须用同源的 HTML 页面。
+4. **验证脚本不能采到一个样本就 break**：`verify-play.mjs` 原来在采到第一个
+   `rs>=2 && t>0.3` 的样本就退出，只剩 1 个样本，于是「currentTime 是否在推进」永远判否——
+   这是**假失败**。已改成至少采 3 个播放中的样本。
+5. **`plates-audit.mjs` 是 Range 包围盒口径，会误报**：它拿 Range 的 ascent/descent 盒
+   （约 1.43em）当字形范围，比可见字形（约 1.0em）大得多，会报「文字露在底外」。
+   **判定一律用 `plates-analyze.py`（像素法）**，别用 Range 口径下结论。
+6. **像素法还要防两个坑**（本次都踩了）：
+   - **分析区会吃进相邻块的字形**——两块底有时只隔 4px，±14px 外扩会把上一行的字算进来。
+     必须把其它块的矩形从分析区里挖掉。
+   - **视口外的块截不到**——文章页「相关文章」在 y≈4159，默认 1400px 视口截不到，
+     会被误报「没采到字形」。截图前要按整页高度重设视口。
+
+### 验证结果（全部通过）
+
+- **播放**：`readyState=4`、1920×1080、5.042s、`currentTime` 0.55 → 1.266 → 1.969 推进、
+  无错误、`206 Partial Content`
+- **交叉淡化**：采样 247 点 / 11.5s，**40 个「两层同时处于中间态」样本、硬切 0 次**
+  （`.probe-frames/verify-crossfade.mjs`）
+- **poster**：`bg-poster.jpg` 已从新视频重抽（272 KB），兜底正常
+- **纸色底覆盖**：35 块 **35/35 通过**（`.probe-frames/plates-analyze.py`）
+- **全站回归**：11 页零 JS 异常、零横向溢出
+
+### 原始视频备份
+
+原片已备份到 `.probe-frames/video-original-backup.mp4`（7.05 MB，不进 git）。
+需要重新压别的档位时，把 `--crf` 改一下跑脚本即可，脚本会复用它做备份判定。
 
 
