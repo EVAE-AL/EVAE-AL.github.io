@@ -8,11 +8,12 @@
 ## 一、这是什么
 
 一个用 **Astro 5** 搭建的静态个人博客，主题为 **水墨风**（宣纸底 + 墨色阶 + 朱红印章），
-全站背景铺了一段 **远程 MP4 视频**，站点正在从「实底宣纸卡」往「能透出背景视频的玻璃卡」演进。
+全站背景铺了一段 **自托管 MP4 视频**，站点正在从「实底宣纸卡」往「能透出背景视频的玻璃卡」演进。
 
 - 工作目录：`D:\个人博客`
+- **线上地址**：<https://evae-al.github.io/>（2026-10-20 上线，仓库 `EVAE-AL/EVAE-AL.github.io`）
 - 本地预览：`http://127.0.0.1:4321`（服务可能已停，见第五节）
-- 无 git 仓库，唯一回滚点是备份 zip（见第五节）
+- git 仓库：`main` 分支，`origin` = 上述仓库；回滚可用 `git revert` 或备份 zip（见第五节）
 
 ---
 
@@ -31,7 +32,7 @@
 | 加载动画（彗星表盘） | `LoadingScreen.astro` + `src/scripts/loading-screen.ts` | ✅ |
 | 长文宣纸面板 | `.paper-panel`（`--panel-alpha: 86%`） | ✅ 用在文章页/关于页/作品详情 |
 | 首页 Hero 居中版式 | `Hero.astro` | ✅ |
-| GitHub Pages 部署配置 | `.github/workflows/deploy.yml` | ✅（未启用，需先改 site） |
+| GitHub Pages 部署配置 | `.github/workflows/deploy.yml` | ✅ **已上线** <https://evae-al.github.io/> |
 
 ### 进行中（本次会话的核心）
 
@@ -1054,6 +1055,7 @@ html.dark .card { -webkit-backdrop-filter: none; backdrop-filter: none; }
 实测（跨 12 帧）：dark 首页 7.77:1、dark works 6.39:1、light 首页 5.26:1，全部 ≥4.5:1。
 
 对比实验页：`public/lab-recipes.html`（构建后 `http://127.0.0.1:4321/lab-recipes.html`）。
+**已于 2026-10-20 删除**（上线前清理，不属于站点内容）；要复现配方对照需从备份 zip 里取回。
 
 **注意事项**：
 - `.card` 用在 16 处（文章卡、作品卡、侧边栏、标签云、关于页等），改一处全站生效。
@@ -1082,11 +1084,33 @@ html.dark .card { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 - **视频体积 7.05 MB → 可压到 0.43 MB**（720p CRF30，小 16 倍）。
 
-### 5. 部署前必改
+### 5. 部署前必改（✅ 2026-10-20 已全部完成）
 
-1. `astro.config.mjs` 的 `site` 目前是 `https://example.com` 占位符。
-2. **删掉 `public/lab-recipes.html`**（约 20 KB）——它是开发用的对比页，不该上线。
-3. `src/config.ts` 的站点名 / 作者名 / 社交链接仍是占位。
+1. ~~`astro.config.mjs` 的 `site` 目前是 `https://example.com` 占位符。~~
+   → 已改为 `https://EVAE-AL.github.io`（用户主页仓库，部署在域名根路径，**不设 `base`**）。
+2. ~~**删掉 `public/lab-recipes.html`**（约 20 KB）——它是开发用的对比页，不该上线。~~
+   → 已删除，`smoke.mjs` 的页面清单里也一并移除。
+3. ~~`src/config.ts` 的站点名 / 作者名 / 社交链接仍是占位。~~
+   → GitHub 链接已指向 `https://github.com/EVAE-AL`；占位的 `mailto:hello@example.com` 已移除
+   （没有真实邮箱，留一个假地址比不显示更糟）。
+4. 额外清理：`BaseLayout.astro` 里指向 `motionsites.org` 的 `preconnect` 已删——
+   视频自托管后不再访问第三方域名，那条预连接纯属浪费。
+
+**上线结果**：<https://evae-al.github.io/> —— 11 页全部 200、零 JS 异常、零横向溢出；
+背景视频线上实测 `readyState=4` / 1920×1080 / 5.042s / 三个 `206 Partial Content`；
+canonical、og:url、og:image、rss、robots、sitemap 全部指向新域名。
+
+**踩到的网络坑（这台机器专属）**：`github.com` 解析到 `20.205.243.166` 被阻断（TCP 443 不通，
+ping 也不通），而 `api.github.com`、`ssh.github.com:443`、`140.82.112.3` 都正常。
+所以 `git push` 一开始报 `Recv failure: Connection was reset`。解法是把 IP 钉住：
+
+```powershell
+git -c http.curloptResolve=github.com:443:140.82.112.3 push -u origin main
+```
+
+（`gh` CLI 走 `api.github.com`，不受影响，所以建仓库、开 Pages 都正常。）
+以后推不动先 `Test-NetConnection github.com -Port 443` 确认是不是这个原因，
+不要盲目以为是凭据或代理问题。
 
 ### 6. 待用户决策的历史遗留
 
@@ -1101,10 +1125,10 @@ html.dark .card { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 ```
 D:\个人博客\
-├─ astro.config.mjs              # site 占位符待改
+├─ astro.config.mjs              # site = https://EVAE-AL.github.io（无 base）
 ├─ package.json                  # 6 个依赖，无 React
 ├─ src\
-│  ├─ config.ts                  # 站点/作者/导航配置（占位内容待改）
+│  ├─ config.ts                  # 站点/作者/导航配置（GitHub 已指向真实账号）
 │  ├─ styles\global.css          # ★ 设计系统，卡片改动在此
 │  ├─ components\
 │  │  ├─ BackgroundVideo.astro   # 背景视频，scrim = 0
@@ -1117,7 +1141,7 @@ D:\个人博客\
 │  ├─ layouts\BaseLayout.astro
 │  ├─ scripts\ink-gallery.ts / loading-screen.ts
 │  └─ pages\                     # 9 个页面文件
-├─ public\lab-recipes.html       # ★ 配方对比页（部署前请删除）
+├─ public\                       # bg-video.mp4 / bg-poster.jpg / og-default.jpg / favicon.svg
 ├─ .probe-frames\                # ★ 全部分析脚本与报告（见下）
 └─ README.md
 ```
@@ -1132,7 +1156,7 @@ D:\个人博客\
 | `header-info.json` / `hmf-light.json` / `hmf-dark.json` | 头部元素几何与前景色 |
 | `hmf-light.txt` / `hmf-dark.txt` | 头部对比度结论（浅色 5.82:1 / 深色 5.89:1） |
 | `fin-contrast.py` + `fin-*.png` | 整屏截图版对比度验证（用于排除 `clip` 坐标歧义） |
-| `smoke.mjs` + `smoke.json` | ★ **全站 12 页冒烟**（头部/溢出/JS 报错/导航数） |
+| `smoke.mjs` + `smoke.json` | ★ **全站 11 页冒烟**（头部/溢出/JS 报错/导航数）；`smoke.json` 在 `.probe-frames/live/` 下是线上那轮的记录 |
 | `lab-verify.mjs` / `lab-shot.mjs` | 对比页渲染验证与截图 |
 | `tune-dark.mjs` + `tune-eval.py` | 深色卡片配方扫描（56 帧） |
 | `cdp-multi.mjs` / `cdp-text.mjs` / `multiframe.mjs` | 卡片文字对比度回归（几何 + 跨帧） |

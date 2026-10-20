@@ -4,6 +4,8 @@
 
 视觉上是**水墨风**：宣纸底、墨分五色、朱红点睛，全屏背景视频，深浅两套主题。
 
+**线上地址：<https://evae-al.github.io/>**（GitHub Pages，推送到 `main` 自动部署）
+
 站点名与作者名是占位（`墨迹` / `EVIL DEMON`），改 [`src/config.ts`](src/config.ts) 一个文件即可换成你自己的。
 
 ---
@@ -271,6 +273,7 @@ GitHub Pages 能接受，但首屏偏重；压到 720p 约 0.4 MB（需要 ffmpe
 
 另外这个 MP4 的 `moov` 在 `mdat` **之后**（不是 fast-start），播放器要先拿到文件尾部才能起播。
 本地和 GitHub Pages 都支持 Range，所以只是多一个往返，不影响使用。
+**线上实测**：`readyState=4`、`1920×1080`、`5.042s`，媒体请求返回 `206 Partial Content`，播放正常。
 
 ---
 
