@@ -2,7 +2,7 @@
 import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Icon from '../../components/Icon.astro';
-import { getSortedProjects, statusMeta } from '../../lib/projects';
+import { getSortedProjects, statusMeta, sectionMeta } from '../../lib/projects';
 import { formatDate, isoDate, withBase } from '../../lib/site';
 
 export async function getStaticPaths() {
@@ -15,6 +15,7 @@ const { Content } = await render(project.entry);
 
 const { title, description, role, date, stack, cover, link, repo, status } = project.data;
 const meta = statusMeta[status];
+const section = sectionMeta[project.data.section];
 
 const projects = await getSortedProjects();
 const index = projects.findIndex((p) => p.id === project.id);
@@ -42,7 +43,8 @@ const next = index >= 0 && index < projects.length - 1 ? projects[index + 1] : u
               <span class:list={['size-1.5 rounded-full', meta.dot]} />
               {meta.label}
             </span>
-            {role && <span class="chip">{role}</span>}
+            {role && <span class="chip">{section.label} · {role}</span>}
+            {!role && <span class="chip">{section.label}</span>}
             {date && (
               <span class="paper-plate text-xs text-ink-mute">
                 <time datetime={isoDate(date)}>{formatDate(date)}</time>

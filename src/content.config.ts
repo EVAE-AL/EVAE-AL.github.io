@@ -41,6 +41,8 @@ const projects = defineCollection({
     status: z.enum(['active', 'done', 'archived']).default('done'),
     /** 设为 true 会排到最前并在首页精选区展示 */
     featured: z.boolean().default(false),
+    /** 栏目分组：main 主要作品 | lab 视觉与交互实验 | planning 内容策划 */
+    section: z.enum(['main', 'lab', 'planning']).default('main'),
     /** 排序权重，数字小的在前；相同则按日期倒序 */
     order: z.number().default(0),
     /** 设为 true 则构建时不显示 */
